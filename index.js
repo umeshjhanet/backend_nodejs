@@ -35,7 +35,7 @@ app.listen(PORT, () => {
 });
 
 app.get('/users', cors(corsOptions), (req, res) => {
-    db.query('SELECT locationname FROM scanned limit 5', (err, results) => {
+    db.query('SELECT * FROM tbl_user_master;', (err, results) => {
       if (err) throw err;
       res.json(results);
     });
