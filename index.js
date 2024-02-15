@@ -1,17 +1,18 @@
 const express = require('express');
 var cors = require('cors')
 const mysql = require('mysql2');
-app.use(cors())
+
  
 var corsOptions = {
-  origin: 'https://backend-nodejs-nine.vercel.app',
+  origin: 'localhost',
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
  
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
+app.use(cors())
 
 const db = mysql.createConnection({
   host: 'localhost',
@@ -29,7 +30,7 @@ db.connect((err) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on https://backend-nodejs-nine.vercel.app:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
 
 app.get('/users', cors(corsOptions), (req, res) => {
