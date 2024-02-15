@@ -14,7 +14,7 @@ const db = mysql.createConnection({
   port:'3306',
   user: 'root',
   password: 'Root$#123',
-  database: 'up_dc_mis_tmp',
+  database: 'ezeefile_updc',
 });
 
 var corsOptions = {
