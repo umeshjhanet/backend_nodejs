@@ -4,7 +4,7 @@ const mysql = require('mysql2');
 
  
 var corsOptions = {
-  origin: 'localhost',
+  origin: 'backend-nodejs-nine.vercel.app',
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
  
