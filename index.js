@@ -3,11 +3,6 @@ var cors = require('cors')
 const mysql = require('mysql2');
 
  
-var corsOptions = {
-  origin: 'backend-nodejs-nine.vercel.app',
-  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
-}
- 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -15,11 +10,16 @@ app.use(express.json());
 app.use(cors())
 
 const db = mysql.createConnection({
-  host: 'localhost',
+  host: '192.168.3.124',
   user: 'root',
-  password: 'root',
-  database: 'nodejs_rest_api',
+  password: 'Root$#123',
+  database: 'up_dc_mis_tmp',
 });
+
+var corsOptions = {
+  origin: 'backend-nodejs-nine.vercel.app',
+  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+}
 
 db.connect((err) => {
   if (err) {
@@ -34,7 +34,7 @@ app.listen(PORT, () => {
 });
 
 app.get('/users', cors(corsOptions), (req, res) => {
-    db.query('SELECT * FROM users', (err, results) => {
+    db.query('SELECT locationname FROM scanned limit 5', (err, results) => {
       if (err) throw err;
       res.json(results);
     });
