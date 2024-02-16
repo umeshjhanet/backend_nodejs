@@ -18,7 +18,7 @@ const db = mysql.createConnection({
 });
 
 var corsOptions = {
-  origin: 'backend-nodejs-nine.vercel.app',
+  origin: 'http://localhost:3000',
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
 
@@ -33,10 +33,19 @@ db.connect((err) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+app.options('/users', cors(corsOptions), (req, res) => {
+  res.sendStatus(200);
+});
 
 app.get('/users', cors(corsOptions), (req, res) => {
     db.query('SELECT * from user_data;', (err, results) => {
       if (err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/locations', cors(corsOptions), (req, res) => {
+    db.query("SELECT * from locations;", (err,results) => {
+      if(err) throw err;
       res.json(results);
     });
   });
