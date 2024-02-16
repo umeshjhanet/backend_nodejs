@@ -10,11 +10,11 @@ app.use(express.json());
 app.use(cors())
 
 const db = mysql.createConnection({
-  host: '192.168.3.124',
-  port:'3306',
-  user: 'root',
-  password: 'Root$#123',
-  database: 'ezeefile_updc',
+  host: 'mysqldb-nodejs-db-nodejs.a.aivencloud.com',
+  port:'15292',
+  user: 'avnadmin',
+  password: 'AVNS_7_-TDwKOAalQNuMTrXl',
+  database: 'defaultdb',
 });
 
 var corsOptions = {
@@ -35,10 +35,8 @@ app.listen(PORT, () => {
 });
 
 app.get('/users', cors(corsOptions), (req, res) => {
-    db.query('SELECT * FROM tbl_user_master;', (err, results) => {
+    db.query('Show tables;', (err, results) => {
       if (err) throw err;
       res.json(results);
     });
   });
-
-  
