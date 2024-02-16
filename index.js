@@ -35,7 +35,7 @@ app.listen(PORT, () => {
 });
 
 app.get('/users', cors(corsOptions), (req, res) => {
-    db.query('Show tables;', (err, results) => {
+    db.query('SELECT * from user_data;', (err, results) => {
       if (err) throw err;
       res.json(results);
     });
