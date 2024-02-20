@@ -49,3 +49,9 @@ app.get('/users', cors(corsOptions), (req, res) => {
       res.json(results);
     });
   });
+  app.get('/summary', cors(corsOptions), (req, res) => {
+    db.query("SELECT * from summary_data;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
