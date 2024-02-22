@@ -38,7 +38,7 @@ app.options('/users', cors(corsOptions), (req, res) => {
 });
 
 app.get('/users', cors(corsOptions), (req, res) => {
-    db.query('SELECT * from user_data;', (err, results) => {
+    db.query('SELECT * from userinfo;', (err, results) => {
       if (err) throw err;
       res.json(results);
     });
@@ -55,3 +55,23 @@ app.get('/users', cors(corsOptions), (req, res) => {
       res.json(results);
     });
   });
+  app.get('/graph', cors(corsOptions), (req, res) => {
+    db.query("SELECT * from graph_test;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+
+
+  app.post('/userinfo', (req, res) => {
+  const { name, email, phone, password } = req.body;
+  const query = 'INSERT INTO userinfo (username, email, phone, password) VALUES (?, ?, ?, ?)';
+  db.query(query, [name, email, phone, password], (err, result) => {
+    if (err) {
+      console.error("Error inserting user:", err);
+      res.status(500).json({ error: 'An error occurred while inserting user' });
+    } else {
+      res.status(200).json({ message: 'User added successfully', id: result.insertId });
+    }
+  });
+});
