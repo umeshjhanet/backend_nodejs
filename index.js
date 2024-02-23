@@ -61,6 +61,18 @@ app.get('/users', cors(corsOptions), (req, res) => {
       res.json(results);
     });
   });
+  app.get('/scanned_images', cors(corsOptions), (req, res) => {
+    db.query("SELECT * FROM scanned_images;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/location_report', cors(corsOptions), (req, res) => {
+    db.query("SELECT * FROM location_report;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
 
 
   app.post('/userinfo', (req, res) => {
