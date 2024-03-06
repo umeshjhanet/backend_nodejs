@@ -114,6 +114,12 @@ app.get('/users', cors(corsOptions), (req, res) => {
       res.json(results);
     });
   });
+  app.get('/graph1', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT sum(exportpdffiles) as 'Export PDF' , sum(cbslqafiles)-sum(clientqaacceptfiles) as 'Client QA Pending', sum(clientqaacceptfiles) as 'Client QA',  sum(cbslqafiles) as 'CBSL QA', sum(scanfiles) as 'Scanned', sum(inventoryfiles) as 'Received'  from scanned;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
 
 
   app.post('/userinfo', (req, res) => {
@@ -173,7 +179,6 @@ app.delete('/usermasterdelete/:Desig_ID', (req, res) => {
     res.json({ message: 'User deleted successfully' });
   });
 });
-
 
 
 
