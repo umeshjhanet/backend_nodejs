@@ -16,6 +16,20 @@ const db = mysql.createConnection({
   password: 'AVNS_7_-TDwKOAalQNuMTrXl',
   database: 'defaultdb',
 });
+const mysql22 = mysql.createConnection({
+  host: '192.168.3.124',
+  port: '3306',
+  user: 'root',
+  password: 'Root$#123',
+  database: 'ezeefile_updc',
+})
+const updcPrayagraj = mysql.createConnection({
+  host: '192.168.3.124',
+  port:'3306',
+  user:'root',
+  password:'Root$#123',
+  database:'updc_prayagraj',
+})
 
 var corsOptions = {
   origin: 'https://cen-dboard.vercel.app',
@@ -43,12 +57,7 @@ app.get('/users', cors(corsOptions), (req, res) => {
       res.json(results);
     });
   });
-  app.get('/locations', cors(corsOptions), (req, res) => {
-    db.query("SELECT * from locations;", (err,results) => {
-      if(err) throw err;
-      res.json(results);
-    });
-  });
+ 
   app.get('/summary', cors(corsOptions), (req, res) => {
     db.query("SELECT * from summary_data;", (err,results) => {
       if(err) throw err;
@@ -75,6 +84,38 @@ app.get('/users', cors(corsOptions), (req, res) => {
   });
 
 
+  app.get('/locations', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT LocationID, LocationName from locationmaster;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/usermaster', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT user_id, first_name,last_name,designation FROM tbl_user_master where designation in ('project manager', 'site manager', 'site incharge','project head');", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/designations', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT * FROM tbl_designation_master;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/designations', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT * FROM tbl_designation_master;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/site_MPData', cors(corsOptions), (req, res) => {
+    updcPrayagraj.query("SELECT * FROM tbl_site_mp;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+
+
   app.post('/userinfo', (req, res) => {
   const { name, email, phone, password } = req.body;
   const query = 'INSERT INTO userinfo (username, email, phone, password) VALUES (?, ?, ?, ?)';
@@ -87,3 +128,56 @@ app.get('/users', cors(corsOptions), (req, res) => {
     }
   });
 });
+
+app.post('/usermasterinfo', (req, res) => {
+  const { Desig_ID, Desig_name } = req.body;
+  const query = 'INSERT INTO tbl_designation_master (Desig_ID, Desig_name) VALUES (?, ?)';
+  mysql22.query(query, [Desig_ID, Desig_name], (err, result) => {
+    if (err) {
+      console.error("Error inserting user:", err);
+      res.status(500).json({ error: 'An error occurred while inserting user' });
+    } else {
+      res.status(200).json({ message: 'User added successfully', id: result.insertId });
+    }
+  });
+});
+app.post('/site_MP', (req, res) => {
+  const {  PH_Id,PO_Id, PM_Id, PCo_Id, SM_Name, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id, } = req.body;
+  const query = 'INSERT INTO tbl_site_mp (PH_Id,PO_Id, PM_Id, PCo_Id, SM_Name, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_ID) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
+  updcPrayagraj.query(query, [PH_Id,PO_Id, PM_Id, PCo_Id, SM_Name, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id,], (err, result) => {
+    if (err) {
+      console.error("Error inserting user:", err);
+      res.status(500).json({ error: 'An error occurred while inserting user' });
+    } else {
+      res.status(200).json({ message: 'ManPower added successfully', id: result.insertId });
+    }
+  });
+});
+app.put('/usermasterupdate/:Desig_ID', (req, res) => {
+  const {Desig_name, Desig_ID } = req.body;
+  const query = 'UPDATE tbl_designation_master SET Desig_name = ? where Desig_ID = ?;';
+ mysql22.query(query, [Desig_name, Desig_ID], (err, result) => {
+    if (err) {
+      console.error("Error inserting user:", err);
+      res.status(500).json({ error: 'An error occurred while updating user' });
+    } else {
+     res.status(200).json({ message: 'User updated successfully', id: req.params.Desig_ID });
+
+    }
+  });
+});
+app.delete('/usermasterdelete/:Desig_ID', (req, res) => {
+  const { Desig_ID } = req.params;
+  mysql22.query('DELETE FROM tbl_designation_master WHERE Desig_ID = ?', [Desig_ID], (err) => {
+    if (err) throw err;
+    res.json({ message: 'User deleted successfully' });
+  });
+});
+
+
+
+
+
+
+
+//SELECT first_name,last_name,designation FROM tbl_user_master where designation in ('project manager', 'site incharge', 'project owner', 'site manager');
