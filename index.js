@@ -24,11 +24,11 @@ const mysql22 = mysql.createConnection({
   database: 'ezeefile_updc',
 })
 const updcPrayagraj = mysql.createConnection({
-  host: '192.168.3.124',
+  host: 'localhost',
   port:'3306',
   user:'root',
-  password:'Root$#123',
-  database:'updc_prayagraj',
+  password:'cbsl@123',
+  database:'updc_misdb',
 })
 
 var corsOptions = {
@@ -85,29 +85,48 @@ app.get('/users', cors(corsOptions), (req, res) => {
 
 
   app.get('/locations', cors(corsOptions), (req, res) => {
-    mysql22.query("SELECT LocationID, LocationName from locationmaster;", (err,results) => {
+    updcPrayagraj.query("SELECT LocationID, LocationName from locationmaster;", (err,results) => {
       if(err) throw err;
       res.json(results);
     });
   });
   app.get('/usermaster', cors(corsOptions), (req, res) => {
-    mysql22.query("SELECT user_id, first_name,last_name,designation FROM tbl_user_master where designation in ('project manager', 'site manager', 'site incharge','project head');", (err,results) => {
+    updcPrayagraj.query("SELECT user_id, first_name,last_name,designation FROM tbl_user_master where designation in ('project manager', 'site manager', 'site incharge','project head');", (err,results) => {
       if(err) throw err;
       res.json(results);
     });
   });
   app.get('/designations', cors(corsOptions), (req, res) => {
-    mysql22.query("SELECT * FROM tbl_designation_master;", (err,results) => {
+    updcPrayagraj.query("SELECT * FROM tbl_designation_master;", (err,results) => {
       if(err) throw err;
       res.json(results);
     });
   });
-  app.get('/designations', cors(corsOptions), (req, res) => {
-    mysql22.query("SELECT * FROM tbl_designation_master;", (err,results) => {
+  app.get('/graph5', cors(corsOptions), (req, res) => {
+    // const query = "SELECT scandate,SUM(scanfiles) as scannedfiles FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK)AND scandate <= NOW() GROUP BY scandate;"
+    const query="SELECT DATE_FORMAT(scandate, '%Y-%m-%d') as scandate, SUM(scanfiles) as scannedfiles FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK) AND scandate <= NOW() GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');"
+    updcPrayagraj.query(query, (err,results) => {
       if(err) throw err;
       res.json(results);
     });
   });
+
+  app.get('/graph6', cors(corsOptions), (req, res) => {
+    const query = "SELECT DATE_FORMAT(scandate, '%Y-%m-%d') as scandate, SUM(scanimages) as scannedimages FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK) AND scandate <= NOW() GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');"
+    updcPrayagraj.query(query, (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+
+  app.get('/graph7', cors(corsOptions), (req, res) => {
+    const query = "SELECT DATE_FORMAT(s.scandate,'%Y-%m-%d') AS 'scandate',SUM(s.scanimages) AS 'Scanned No Of Images' FROM scanned s WHERE s.scandate BETWEEN CURDATE() - INTERVAL 30 DAY AND CURDATE() GROUP BY DATE_FORMAT(s.scandate,'%Y-%m-%d');"
+    updcPrayagraj.query(query, (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+
   app.get('/site_MPData', cors(corsOptions), (req, res) => {
     updcPrayagraj.query("SELECT * FROM tbl_site_mp;", (err,results) => {
       if(err) throw err;
@@ -115,11 +134,19 @@ app.get('/users', cors(corsOptions), (req, res) => {
     });
   });
   app.get('/graph1', cors(corsOptions), (req, res) => {
-    mysql22.query("SELECT sum(exportpdffiles) as 'Export PDF' , sum(cbslqafiles)-sum(clientqaacceptfiles) as 'Client QA Pending', sum(clientqaacceptfiles) as 'Client QA',  sum(cbslqafiles) as 'CBSL QA', sum(scanfiles) as 'Scanned', sum(inventoryfiles) as 'Received'  from scanned;", (err,results) => {
+    updcPrayagraj.query("SELECT sum(exportpdffiles) as 'Export PDF' , sum(cbslqafiles)-sum(clientqaacceptfiles) as 'Client QA Pending', sum(clientqaacceptfiles) as 'Client QA',  sum(cbslqafiles) as 'CBSL QA', sum(scanfiles) as 'Scanned', sum(inventoryfiles) as 'Received'  from scanned;", (err,results) => {
       if(err) throw err;
       res.json(results);
     });
   });
+
+  app.get('/', cors(corsOptions), (req, res) => {
+    updcPrayagraj.query("SELECT sum(exportpdffiles) as 'Export PDF' , sum(cbslqafiles)-sum(clientqaacceptfiles) as 'Client QA Pending', sum(clientqaacceptfiles) as 'Client QA',  sum(cbslqafiles) as 'CBSL QA', sum(scanfiles) as 'Scanned', sum(inventoryfiles) as 'Received'  from scanned;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+
 
 
   app.post('/userinfo', (req, res) => {
