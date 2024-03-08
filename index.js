@@ -24,10 +24,10 @@ const mysql22 = mysql.createConnection({
   database: 'ezeefile_updc',
 })
 const updcPrayagraj = mysql.createConnection({
-  host: '192.168.3.124',
+  host: 'localhost',
   port:'3306',
   user:'root',
-  password:'Root$#123',
+  password:'root',
   database:'updc_prayagraj',
 })
 
@@ -120,8 +120,97 @@ app.get('/users', cors(corsOptions), (req, res) => {
       res.json(results);
     });
   });
+  app.get('/graph2', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/civil', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT  sum(scanfiles) as 'Civil Files' , sum(scanimages) as 'Civil Images' FROM `scanned` where  casetypename Not Like '%Criminal%';", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/criminal', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT  sum(scanfiles) as 'Criminal Files' , sum(scanimages) as 'Criminal Images' FROM `scanned` where  casetypename Like '%Criminal%';", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/graph7', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT sum(exportpdffiles) as 'Export PDF' , sum(cbslqafiles)-sum(clientqaacceptfiles) as 'Client QA Pending', sum(clientqaacceptfiles) as 'Client QA',  sum(cbslqafiles) as 'CBSL QA', sum(scanfiles) as 'Scanned', sum(inventoryfiles) as 'Received'  from scanned where (DATE(`inventorydate`) = CURDATE()-1 or DATE(`scandate`) = CURDATE()-1 or DATE(`cbslqadate`) = CURDATE()-1 or DATE(`clientqaacceptdate`) = CURDATE()-1 or DATE(`exportdate`) = CURDATE()-1);", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+  app.get('/graph8', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned where (DATE(`inventorydate`) = CURDATE()-1 or DATE(`scandate`) = CURDATE()-1 or DATE(`cbslqadate`) = CURDATE()-1 or DATE(`clientqaacceptdate`) = CURDATE()-1 or DATE(`exportdate`) = CURDATE()-1);", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+
+  app.get('/graph9', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned where scandate= CURDATE()- INTERVAL 1 DAY group by locationname;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+
+  app.get('/graph10', cors(corsOptions), (req, res) => {
+    mysql22.query("SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned group by locationname;", (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
+
+  app.get('/tabularData', cors(corsOptions), (req, res) => {
+    mysql22.query(`
+    SELECT tt.LocationName as 'LocationName',
+           tt.ScannedNoOfFilesTotal as 'Total_Files',
+           tt.ScannedNoOfImagesTotal as 'Total_Images',
+           td.ScannedNoOfFilesToday as 'Today_Files ',
+           td.ScannedNoOfImagesToday as 'Today_Images ',
+           tdyes.ScannedNoOfFilesYes as 'Yes_Files ',
+           tdyes.ScannedNoOfImagesYes as 'Yes_Images ',
+           tdprev.ScannedNoOfFilesPrev as 'Prev_Files ',
+           tdprev.ScannedNoOfImagesPrev as 'Prev_Images '
+    FROM (SELECT s.locationname 'LocationName',
+                 SUM(s.scanfiles) as 'ScannedNoOfFilesTotal',
+                 SUM(s.scanimages) as 'ScannedNoOfImagesTotal'
+          FROM scanned s
+          GROUP BY s.locationname) tt
+    LEFT JOIN (SELECT s.locationname 'LocationName',
+                      SUM(s.scanfiles) as 'ScannedNoOfFilesYes',
+                      SUM(s.scanimages) as 'ScannedNoOfImagesYes'
+               FROM scanned s
+               WHERE s.scandate = CURDATE() - INTERVAL 1 DAY
+               GROUP BY s.locationname) tdyes
+           ON tdyes.LocationName = tt.LocationName
+    LEFT JOIN (SELECT s.locationname 'LocationName',
+                      SUM(s.scanfiles) as 'ScannedNoOfFilesPrev',
+                      SUM(s.scanimages) as 'ScannedNoOfImagesPrev'
+               FROM scanned s
+               WHERE s.scandate = CURDATE() - INTERVAL 2 DAY
+               GROUP BY s.locationname) tdprev
+           ON tdprev.LocationName = tt.LocationName
+    LEFT JOIN (SELECT s.locationname 'LocationName',
+                      SUM(s.scanfiles) as 'ScannedNoOfFilesToday',
+                      SUM(s.scanimages) as 'ScannedNoOfImagesToday'
+               FROM scanned s
+               WHERE s.scandate = CURDATE()
+               GROUP BY s.locationname) td
+           ON td.LocationName = tt.LocationName
+    ORDER BY tt.LocationName;
+  ;`, (err,results) => {
+      if(err) throw err;
+      res.json(results);
+    });
+  });
 
 
+  
   app.post('/userinfo', (req, res) => {
   const { name, email, phone, password } = req.body;
   const query = 'INSERT INTO userinfo (username, email, phone, password) VALUES (?, ?, ?, ?)';
@@ -148,9 +237,9 @@ app.post('/usermasterinfo', (req, res) => {
   });
 });
 app.post('/site_MP', (req, res) => {
-  const {  PH_Id,PO_Id, PM_Id, PCo_Id, SM_Name, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id, } = req.body;
-  const query = 'INSERT INTO tbl_site_mp (PH_Id,PO_Id, PM_Id, PCo_Id, SM_Name, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_ID) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
-  updcPrayagraj.query(query, [PH_Id,PO_Id, PM_Id, PCo_Id, SM_Name, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id,], (err, result) => {
+  const {  PH_Id,PO_Id, PM_Id, PCo_Id, SM_Id, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id, } = req.body;
+  const query = 'INSERT INTO tbl_site_mp (PH_Id,PO_Id, PM_Id, PCo_Id, SM_Id, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_ID) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
+  updcPrayagraj.query(query, [PH_Id,PO_Id, PM_Id, PCo_Id, SM_Id, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id,], (err, result) => {
     if (err) {
       console.error("Error inserting user:", err);
       res.status(500).json({ error: 'An error occurred while inserting user' });
