@@ -181,18 +181,18 @@ app.get('/users', cors(corsOptions), (req, res) => {
 
   app.get("/csv" ,cors(corsOptions),(req,res,next)=>{
     const getCsv=`SELECT tt.LocationName as 'LocationName',
-    tt.ScannedNoOfFilesTotal as 'Total_Files',
-    tt.ScannedNoOfImagesTotal as 'Total_Images',
-    td.ScannedNoOfFilesToday as 'Today_Files ',
-    td.ScannedNoOfImagesToday as 'Today_Images ',
-    tdyes.ScannedNoOfFilesYes as 'Yes_Files ',
-    tdyes.ScannedNoOfImagesYes as 'Yes_Images ',
-    tdprev.ScannedNoOfFilesPrev as 'Prev_Files ',
-    tdprev.ScannedNoOfImagesPrev as 'Prev_Images '
+    case when tt.ScannedNoOfFilesTotal is null then '0' else tt.ScannedNoOfFilesTotal end as 'Total_Files',
+    case when tt.ScannedNoOfImagesTotal is null then '0' else tt.ScannedNoOfImagesTotal end as 'Total_Images',
+    case when td.ScannedNoOfFilesToday is null then '0' else td.ScannedNoOfFilesToday end as 'Today_Files',
+    case when td.ScannedNoOfImagesToday is null then '0' else td.ScannedNoOfImagesToday end as 'Today_Images',
+    case when tdyes.ScannedNoOfFilesYes is null then '0' else tdyes.ScannedNoOfFilesYes end as 'Yes_Files',
+    case when tdyes.ScannedNoOfImagesYes is null then '0' else tdyes.ScannedNoOfImagesYes end as 'Yes_Images',
+    case when tdprev.ScannedNoOfFilesPrev is null then '0' else tdprev.ScannedNoOfFilesPrev end as 'Prev_Files',
+    case when tdprev.ScannedNoOfImagesPrev is null then '0' else tdprev.ScannedNoOfImagesPrev end as 'Prev_Images'
     FROM (SELECT s.locationname 'LocationName',
     SUM(s.scanfiles) as 'ScannedNoOfFilesTotal',
     SUM(s.scanimages) as 'ScannedNoOfImagesTotal'
-    FROM scanned s 
+    FROM scanned s
     GROUP BY s.locationname) tt
     LEFT JOIN (SELECT s.locationname 'LocationName',
     SUM(s.scanfiles) as 'ScannedNoOfFilesYes',
@@ -203,20 +203,20 @@ app.get('/users', cors(corsOptions), (req, res) => {
     ON tdyes.LocationName = tt.LocationName 
     LEFT JOIN (SELECT s.locationname 'LocationName',
     SUM(s.scanfiles) as 'ScannedNoOfFilesPrev',
-    SUM(s.scanimages) as 'ScannedNoOfImagesPrev' 
+    SUM(s.scanimages) as 'ScannedNoOfImagesPrev'
     FROM scanned s 
     WHERE s.scandate = CURDATE() - INTERVAL 2 DAY 
     GROUP BY s.locationname) tdprev 
     ON tdprev.LocationName = tt.LocationName 
     LEFT JOIN (SELECT s.locationname 'LocationName',
     SUM(s.scanfiles) as 'ScannedNoOfFilesToday',
-    SUM(s.scanimages) as 'ScannedNoOfImagesToday' 
+    SUM(s.scanimages) as 'ScannedNoOfImagesToday'
     FROM scanned s 
-    WHERE s.scandate = CURDATE() 
+    WHERE s.scandate = CURDATE()
     GROUP BY s.locationname) td 
     ON td.LocationName = tt.LocationName 
     ORDER BY tt.LocationName;`
-    updcPrayagraj.query(getCsv,(error,result,field)=>{
+    mysql22.query(getCsv,(error,result,field)=>{
       if(error){
         console.error("Error occured when export csv:", err);
         res.status(500).json({ error: 'An error occurred while exporting csv file' });
@@ -224,15 +224,14 @@ app.get('/users', cors(corsOptions), (req, res) => {
       }
       const data=result;
       res.setHeader('Content-Type','text/csv');
-      res.setHeader('Content-Disposition',
-      'attachment;filename =' + "export.csv" +"'");
-      res.write("Location Name,Total Files,Total Images,Today Files,Today Images,Yes Files,Yes Images,Prev Files, Prev Images\n");
+      res.setHeader('Content-Disposition', 'attachment;filename=export.csv');
+      res.write("Location Name,Files, Images,Files,Images,Files,Images,Files,Images\n");
       if(data==null){
         res.end();
         return;
       }
       data.forEach((row)=>{
-        res.write(row.LocationName+","+row.Total_Files+","+row.Total_Images+","+row.Today_Files +","+row.Today_Images +","+row.Yes_Files +","+row.Yes_Images +","+row.Prev_Files +","+row.Prev_Images +"\n")
+        res.write(row.LocationName+","+row.Prev_Files+","+row.Prev_Images+","+row.Yes_Files +","+row.Yes_Images +","+row.Today_Files +","+row.Today_Images +","+row.Total_Files +","+row.Total_Images +"\n")
       });
       res.end();
     });
@@ -240,7 +239,7 @@ app.get('/users', cors(corsOptions), (req, res) => {
 
 
   app.get('/tabularData', cors(corsOptions), (req, res) => {
-    updcPrayagraj.query(`
+    mysql22.query(`
     SELECT tt.LocationName as 'LocationName',
            tt.ScannedNoOfFilesTotal as 'Total_Files',
            tt.ScannedNoOfImagesTotal as 'Total_Images',
