@@ -64,6 +64,32 @@ app.get('/users', cors(corsOptions), (req, res) => {
       res.json(results);
     });
   });
+  app.get("/summarycsv" ,cors(corsOptions),(req,res,next)=>{
+    const getCsv="SELECT Count(distinct locationid) as TotalLocation,sum(`inventoryfiles`) as 'CollectionFiles',sum(`inventoryimages`) as 'CollectionImages',sum(`scanfiles`) as 'ScannedFiles',sum(`scanimages`) as 'ScannedImages',sum(`qcfiles`) as 'QCFiles',sum(`qcimages`) as 'QCImages',sum(`flaggingfiles`)  as 'FlaggingFiles',sum(`flaggingimages`)  as 'FlaggingImages',sum(`indexfiles`) as 'IndexingFiles',sum(`indeximages`) as 'IndexingImages',sum(`cbslqafiles`)  as 'CBSL_QAFiles',sum(`cbslqaimages`) as 'CBSL_QAImages',sum(`exportpdffiles`)  as 'Export_PdfFiles',sum(`exportpdfimages`)  as 'Export_PdfImages',sum(`clientqaacceptfiles`)  as 'Client_QA_AcceptedFiles',sum(`clientqaacceptimages`)  as 'Client_QA_AcceptedImages',sum(`clientqarejectfiles`)  as 'Client_QA_RejectedFiles',sum(`clientqarejectimages`)  as 'Client_QA_RejectedImages',sum(`digisignfiles`)  as 'Digi_SignFiles',sum(`digisignimages`)  as 'Digi_SignImages'FROM scanned s;"
+    mysql22.query(getCsv,(error,result,field)=>{
+      if(error){
+        console.error("Error occured when export csv:", err);
+        res.status(500).json({ error: 'An error occurred while exporting csv file' });
+        return;
+      }
+      const data=result;
+      res.setHeader('Content-Type','text/csv');
+      res.setHeader('Content-Disposition', 'attachment;filename=export.csv');
+      res.write("Total Location ,Files, Images,Files,Images,Files,Images,Files,Images,Files, Images,Files,Images,Files,Images,Files,Images,Files,Images,Files,Images\n");
+      if(data==null){
+        res.end();
+        return;
+      }
+      data.forEach((row)=>{
+        res.write(row.TotalLocation+","+row.CollectionFiles+","+row.CollectionImages+","+row.ScannedFiles +","+row.ScannedImages +","+row.QCFiles +","+row.QCImages +","+
+        row.FlaggingFiles +","+row.FlaggingImages +","+row.IndexingFiles+","+row.IndexingImages+","+
+        row.CBSL_QAFiles +","+row.CBSL_QAImages +","+row.Export_PdfFiles +","+row.Export_PdfImages +","+
+        row.Client_QA_AcceptedFiles +","+row.Client_QA_AcceptedImages +row.Client_QA_RejectedFiles+","+row.Client_QA_RejectedImages+","+
+        row.Digi_SignFiles +","+row.Digi_SignImages+"\n")
+      });
+      res.end();
+    });
+  });
   app.get('/graph', cors(corsOptions), (req, res) => {
     db.query("SELECT * from graph_test;", (err,results) => {
       if(err) throw err;
@@ -140,6 +166,34 @@ app.get('/users', cors(corsOptions), (req, res) => {
     });
   });
 
+  app.get("/reporttablecsv" ,cors(corsOptions),(req,res,next)=>{
+    const getCsv="SELECT locationid,locationname as 'LocationName',sum(`inventoryfiles`) as 'CollectionFiles',sum(`inventoryimages`) as 'CollectionImages',sum(`scanfiles`) as 'ScannedFiles',sum(`scanimages`) as 'ScannedImages',sum(`qcfiles`) as 'QCFiles',sum(`qcimages`) as 'QCImages',sum(`flaggingfiles`)  as 'FlaggingFiles',sum(`flaggingimages`)  as 'FlaggingImages',sum(`indexfiles`) as 'IndexingFiles',sum(`indeximages`) as 'IndexingImages',sum(`cbslqafiles`)  as 'CBSL_QAFiles',sum(`cbslqaimages`) as 'CBSL_QAImages',sum(`exportpdffiles`)  as 'Export_PdfFiles', sum(`exportpdfimages`)  as 'Export_PdfImages',sum(`clientqaacceptfiles`)  as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`)  as 'Client QA AcceptedImages',sum(`clientqarejectfiles`)  as 'Client_QA_RejectedFiles',sum(`clientqarejectimages`)  as 'Client_QA_RejectedImages',sum(`digisignfiles`)  as 'Digi_SignFiles',sum(`digisignimages`)  as 'Digi_SignImages' FROM scanned  group by locationname;"
+    mysql22.query(getCsv,(error,result,field)=>{
+      if(error){
+        console.error("Error occured when export csv:", err);
+        res.status(500).json({ error: 'An error occurred while exporting csv file' });
+        return;
+      }
+      const data=result;
+      res.setHeader('Content-Type','text/csv');
+      res.setHeader('Content-Disposition', 'attachment;filename=export.csv');
+      res.write("Location ,Files, Images,Files,Images,Files,Images,Files,Images,Files, Images,Files,Images,Files,Images,Files,Images,Files,Images,Files,Images\n");
+      if(data==null){
+        res.end();
+        return;
+      }
+      data.forEach((row)=>{
+        res.write(row.LocationName+","+row.CollectionFiles+","+row.CollectionImages+","+row.ScannedFiles +","
+        +row.ScannedImages +","+row.QCFiles +","+row.QCImages +","+
+        row.FlaggingFiles +","+row.FlaggingImages +","+row.IndexingFiles+","+row.IndexingImages+","+
+        row.CBSL_QAFiles +","+row.CBSL_QAImages +","+row.Export_PdfFiles +","+row.Export_PdfImages +","+
+        row.Client_QA_AcceptedFiles +","+row.Client_QA_AcceptedImages +row.Client_QA_RejectedFiles+","+row.Client_QA_RejectedImages+","+
+        row.Digi_SignFiles +","+row.Digi_SignImages+"\n")
+      });
+      res.end();
+    });
+  });
+
 
 
   app.get('/api/data', (req, res) => {
@@ -169,19 +223,6 @@ app.get('/users', cors(corsOptions), (req, res) => {
       });
     });
   });
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   app.get('/api/tabularData', (req, res) => {
     const locationId = req.query.locationid; // Assuming locationid is passed as a query parameter
@@ -262,17 +303,6 @@ app.get('/users', cors(corsOptions), (req, res) => {
     });
   });
 
-
-
-
-
-
-
-
-
-
-  
-  
   app.get('/graph2', cors(corsOptions), (req, res) => {
     updcPrayagraj.query("SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned;", (err,results) => {
       if(err) throw err;
@@ -320,6 +350,27 @@ app.get('/users', cors(corsOptions), (req, res) => {
     });
   });
 
+  app.use('/searchlocation', (req, res, next) => { 
+    let data="SELECT locationid,locationname as 'LocationName',sum(`inventoryfiles`) as 'CollectionFiles',sum(`inventoryimages`) as 'CollectionImages',sum(`scanfiles`) as 'ScannedFiles',sum(`scanimages`) as 'ScannedImages',sum(`qcfiles`) as 'QCFiles',sum(`qcimages`) as 'QCImages',sum(`flaggingfiles`)  as 'FlaggingFiles',sum(`flaggingimages`)  as 'FlaggingImages',sum(`indexfiles`) as 'IndexingFiles',sum(`indeximages`) as 'IndexingImages',sum(`cbslqafiles`)  as 'CBSL_QAFiles',sum(`cbslqaimages`) as 'CBSL_QAImages',sum(`exportpdffiles`)  as 'Export_PdfFiles', sum(`exportpdfimages`)  as 'Export_PdfImages',sum(`clientqaacceptfiles`)  as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`)  as 'Client QA AcceptedImages',sum(`clientqarejectfiles`)  as 'Client_QA_RejectedFiles',sum(`clientqarejectimages`)  as 'Client_QA_RejectedImages',sum(`digisignfiles`)  as 'Digi_SignFiles',sum(`digisignimages`)  as 'Digi_SignImages' FROM scanned  group by locationname;"
+    updcPrayagraj.query(data, (error, results, fields) => {
+      if (error) {
+          res.status(500).send(error.message);
+          return;
+      }
+    const filters = req.query; 
+    const filteredUsers = results.filter(user => { 
+      let isValid = true; 
+      for (key in filters) { 
+        console.log(key, user[key], filters[key]); 
+        isValid = isValid && user[key] == filters[key]; 
+      } 
+      return isValid; 
+    }); 
+  
+    res.send(filteredUsers); 
+  });
+  }); 
+
   app.get("/csv" ,cors(corsOptions),(req,res,next)=>{
     const getCsv=`SELECT tt.LocationName as 'LocationName',
     case when tt.ScannedNoOfFilesTotal is null then '0' else tt.ScannedNoOfFilesTotal end as 'Total_Files',
@@ -359,7 +410,7 @@ app.get('/users', cors(corsOptions), (req, res) => {
     ORDER BY tt.LocationName;`
     mysql22.query(getCsv,(error,result,field)=>{
       if(error){
-        console.error("Error occured when export csv:", err);
+        console.error("Error occured when export csv:", error);
         res.status(500).json({ error: 'An error occurred while exporting csv file' });
         return;
       }
@@ -525,3 +576,24 @@ app.delete('/usermasterdelete/:Desig_ID', (req, res) => {
 
 
 //SELECT first_name,last_name,designation FROM tbl_user_master where designation in ('project manager', 'site incharge', 'project owner', 'site manager');
+// SELECT locationid,locationname as 'LocationName',
+// case when sum(`inventoryfiles`) is null then '0' else sum(`inventoryfiles`) end as 'CollectionFiles',
+// case when sum(`inventoryimages`) is null then '0' else sum(`inventoryimages`) end as 'CollectionImages',
+// case when sum(`scanfiles`) is null then '0' else sum(`scanfiles`) end as 'ScannedFiles',
+// case when sum(`scanimages`) is null then '0' else sum(`scanimages`) end as 'ScannedImages',
+// case when sum(`qcfiles`) is null then '0' else sum(`qcfiles`) end as 'QCFiles',
+// case when sum(`qcimages`) is null then '0' else sum(`qcimages`) end as 'QCImages',
+// case when sum(`flaggingfiles`)is null then '0' else sum(`flaggingfiles`) end  as 'FlaggingFiles',
+// case when sum(`flaggingimages`)is null then '0' else sum(`flaggingimages`) end  as 'FlaggingImages',
+// case when sum(`indexfiles`) is null then '0' else sum(`indexfiles`) end as 'IndexingFiles',
+// case when sum(`indeximages`) is null then '0' else sum(`indeximages`) end as 'IndexingImages',
+// case when sum(`cbslqafiles`) is null then '0' else sum(`cbslqafiles`) end  as 'CBSL_QAFiles',
+// case when sum(`cbslqaimages`)is null then '0' else sum(`cbslqaimages`) end as 'CBSL_QAImages',
+// case when sum(`exportpdffiles`) is null then '0' else sum(`exportpdffiles`) end  as 'Export_PdfFiles',
+// case when sum(`exportpdfimages`) is null then '0' else sum(`exportpdfimages`) end  as 'Export_PdfImages',
+// case when sum(`clientqaacceptfiles`)is null then '0' else sum(`clientqaacceptfiles`) end as 'Client_QA_AcceptedFiles',
+// case when sum(`clientqaacceptimages`)is null then '0' else sum(`clientqaacceptimages`)end as 'Client QA AcceptedImages',
+// case when sum(`clientqarejectfiles`)is null then '0' else sum(`clientqarejectfiles`) end as 'Client_QA_RejectedFiles',
+// case when sum(`clientqarejectimages`) is null then '0' else sum(`clientqarejectimages`) end  as 'Client_QA_RejectedImages',
+// case when sum(`digisignfiles`) is null then '0' else sum(`digisignfiles`) end as 'Digi_SignFiles',
+// case when sum(`digisignimages`) is null then '0' else sum(`digisignimages`)end as 'Digi_SignImages' FROM scanned  group by locationname;
