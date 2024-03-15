@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
-app.use(cors())
+app.use(cors());
 
 const db = mysql.createConnection({
   host: 'mysqldb-nodejs-db-nodejs.a.aivencloud.com',
@@ -32,22 +32,22 @@ const misdb = mysql.createConnection({
 })
 
 var corsOptions = {
-  origin: 'https://cen-dboard.vercel.app',
-  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
-}
+  origin: "https://cen-dboard.vercel.app",
+  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+};
 
 db.connect((err) => {
   if (err) {
-    console.error('Error connecting to MySQL:', err);
+    console.error("Error connecting to MySQL:", err);
     return;
   }
-  console.log('Connected to MySQL database');
+  console.log("Connected to MySQL database");
 });
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-app.options('/users', cors(corsOptions), (req, res) => {
+app.options("/users", cors(corsOptions), (req, res) => {
   res.sendStatus(200);
 });
 
@@ -575,7 +575,11 @@ app.get('/api/tabularData', (req, res) => {
           SUM(s.scanimages) AS 'ScannedNoOfImagesTotal' 
         FROM 
           scanned s 
-        ${locationId ? `WHERE CONVERT(s.locationid, SIGNED) IN (${locationId})` : ''}
+        ${
+          locationId
+            ? `WHERE CONVERT(s.locationid, SIGNED) IN (${locationId})`
+            : ""
+        }
         GROUP BY 
           s.locationname) tt 
         LEFT JOIN 
@@ -587,7 +591,11 @@ app.get('/api/tabularData', (req, res) => {
             scanned s 
           WHERE 
             s.scandate = CURDATE() - INTERVAL 1 DAY 
-            ${locationId ? `AND CONVERT(s.locationid, SIGNED) IN (${locationId})` : ''}
+            ${
+              locationId
+                ? `AND CONVERT(s.locationid, SIGNED) IN (${locationId})`
+                : ""
+            }
           GROUP BY 
             s.locationname) tdyes 
         ON 
@@ -601,7 +609,11 @@ app.get('/api/tabularData', (req, res) => {
             scanned s 
           WHERE 
             s.scandate = CURDATE() - INTERVAL 2 DAY 
-            ${locationId ? `AND CONVERT(s.locationid, SIGNED) IN (${locationId})` : ''}
+            ${
+              locationId
+                ? `AND CONVERT(s.locationid, SIGNED) IN (${locationId})`
+                : ""
+            }
           GROUP BY 
             s.locationname) tdprev 
         ON 
@@ -615,7 +627,11 @@ app.get('/api/tabularData', (req, res) => {
             scanned s 
           WHERE 
             s.scandate = CURDATE() 
-            ${locationId ? `AND CONVERT(s.locationid, SIGNED) IN (${locationId})` : ''}
+            ${
+              locationId
+                ? `AND CONVERT(s.locationid, SIGNED) IN (${locationId})`
+                : ""
+            }
           GROUP BY 
             s.locationname) td 
         ON 
@@ -693,7 +709,7 @@ app.get("/csv", cors(corsOptions), (req, res, next) => {
     FROM (SELECT s.locationname 'LocationName',
     SUM(s.scanfiles) as 'ScannedNoOfFilesTotal',
     SUM(s.scanimages) as 'ScannedNoOfImagesTotal'
-    FROM scanned s 
+    FROM scanned s
     GROUP BY s.locationname) tt
     LEFT JOIN (SELECT s.locationname 'LocationName',
     SUM(s.scanfiles) as 'ScannedNoOfFilesYes',
@@ -704,16 +720,16 @@ app.get("/csv", cors(corsOptions), (req, res, next) => {
     ON tdyes.LocationName = tt.LocationName 
     LEFT JOIN (SELECT s.locationname 'LocationName',
     SUM(s.scanfiles) as 'ScannedNoOfFilesPrev',
-    SUM(s.scanimages) as 'ScannedNoOfImagesPrev' 
+    SUM(s.scanimages) as 'ScannedNoOfImagesPrev'
     FROM scanned s 
     WHERE s.scandate = CURDATE() - INTERVAL 2 DAY 
     GROUP BY s.locationname) tdprev 
     ON tdprev.LocationName = tt.LocationName 
     LEFT JOIN (SELECT s.locationname 'LocationName',
     SUM(s.scanfiles) as 'ScannedNoOfFilesToday',
-    SUM(s.scanimages) as 'ScannedNoOfImagesToday' 
+    SUM(s.scanimages) as 'ScannedNoOfImagesToday'
     FROM scanned s 
-    WHERE s.scandate = CURDATE() 
+    WHERE s.scandate = CURDATE()
     GROUP BY s.locationname) td 
     ON td.LocationName = tt.LocationName 
     ORDER BY tt.LocationName;`
@@ -824,26 +840,31 @@ app.get('/api/uploadlog', (req, res) => {
 
 app.post('/userinfo', (req, res) => {
   const { name, email, phone, password } = req.body;
-  const query = 'INSERT INTO userinfo (username, email, phone, password) VALUES (?, ?, ?, ?)';
+  const query =
+    "INSERT INTO userinfo (username, email, phone, password) VALUES (?, ?, ?, ?)";
   db.query(query, [name, email, phone, password], (err, result) => {
     if (err) {
       console.error("Error inserting user:", err);
-      res.status(500).json({ error: 'An error occurred while inserting user' });
+      res.status(500).json({ error: "An error occurred while inserting user" });
     } else {
-      res.status(200).json({ message: 'User added successfully', id: result.insertId });
+      res
+        .status(200)
+        .json({ message: "User added successfully", id: result.insertId });
     }
   });
 });
 
-app.post('/usermasterinfo', (req, res) => {
+app.post("/usermasterinfo", (req, res) => {
   const { Desig_ID, Desig_name } = req.body;
   const query = 'INSERT INTO tbl_user_master (Desig_ID, Desig_name) VALUES (?, ?)';
   misdb.query(query, [Desig_ID, Desig_name], (err, result) => {
     if (err) {
       console.error("Error inserting user:", err);
-      res.status(500).json({ error: 'An error occurred while inserting user' });
+      res.status(500).json({ error: "An error occurred while inserting user" });
     } else {
-      res.status(200).json({ message: 'User added successfully', id: result.insertId });
+      res
+        .status(200)
+        .json({ message: "User added successfully", id: result.insertId });
     }
   });
 });
@@ -877,24 +898,44 @@ app.put('/usermasterupdate/:Desig_ID', (req, res) => {
   mysql22.query(query, [Desig_name, Desig_ID], (err, result) => {
     if (err) {
       console.error("Error inserting user:", err);
-      res.status(500).json({ error: 'An error occurred while updating user' });
+      res.status(500).json({ error: "An error occurred while updating user" });
     } else {
       res.status(200).json({ message: 'User updated successfully', id: req.params.Desig_ID });
 
     }
   });
 });
-app.delete('/usermasterdelete/:Desig_ID', (req, res) => {
+app.delete("/usermasterdelete/:Desig_ID", (req, res) => {
   const { Desig_ID } = req.params;
-  mysql22.query('DELETE FROM tbl_designation_master WHERE Desig_ID = ?', [Desig_ID], (err) => {
-    if (err) throw err;
-    res.json({ message: 'User deleted successfully' });
-  });
+  mysql22.query(
+    "DELETE FROM tbl_designation_master WHERE Desig_ID = ?",
+    [Desig_ID],
+    (err) => {
+      if (err) throw err;
+      res.json({ message: "User deleted successfully" });
+    }
+  );
 });
 
-
-
-
-
-
 //SELECT first_name,last_name,designation FROM tbl_user_master where designation in ('project manager', 'site incharge', 'project owner', 'site manager');
+// SELECT locationid,locationname as 'LocationName',
+// case when sum(`inventoryfiles`) is null then '0' else sum(`inventoryfiles`) end as 'CollectionFiles',
+// case when sum(`inventoryimages`) is null then '0' else sum(`inventoryimages`) end as 'CollectionImages',
+// case when sum(`scanfiles`) is null then '0' else sum(`scanfiles`) end as 'ScannedFiles',
+// case when sum(`scanimages`) is null then '0' else sum(`scanimages`) end as 'ScannedImages',
+// case when sum(`qcfiles`) is null then '0' else sum(`qcfiles`) end as 'QCFiles',
+// case when sum(`qcimages`) is null then '0' else sum(`qcimages`) end as 'QCImages',
+// case when sum(`flaggingfiles`)is null then '0' else sum(`flaggingfiles`) end  as 'FlaggingFiles',
+// case when sum(`flaggingimages`)is null then '0' else sum(`flaggingimages`) end  as 'FlaggingImages',
+// case when sum(`indexfiles`) is null then '0' else sum(`indexfiles`) end as 'IndexingFiles',
+// case when sum(`indeximages`) is null then '0' else sum(`indeximages`) end as 'IndexingImages',
+// case when sum(`cbslqafiles`) is null then '0' else sum(`cbslqafiles`) end  as 'CBSL_QAFiles',
+// case when sum(`cbslqaimages`)is null then '0' else sum(`cbslqaimages`) end as 'CBSL_QAImages',
+// case when sum(`exportpdffiles`) is null then '0' else sum(`exportpdffiles`) end  as 'Export_PdfFiles',
+// case when sum(`exportpdfimages`) is null then '0' else sum(`exportpdfimages`) end  as 'Export_PdfImages',
+// case when sum(`clientqaacceptfiles`)is null then '0' else sum(`clientqaacceptfiles`) end as 'Client_QA_AcceptedFiles',
+// case when sum(`clientqaacceptimages`)is null then '0' else sum(`clientqaacceptimages`)end as 'Client QA AcceptedImages',
+// case when sum(`clientqarejectfiles`)is null then '0' else sum(`clientqarejectfiles`) end as 'Client_QA_RejectedFiles',
+// case when sum(`clientqarejectimages`) is null then '0' else sum(`clientqarejectimages`) end  as 'Client_QA_RejectedImages',
+// case when sum(`digisignfiles`) is null then '0' else sum(`digisignfiles`) end as 'Digi_SignFiles',
+// case when sum(`digisignimages`) is null then '0' else sum(`digisignimages`)end as 'Digi_SignImages' FROM scanned  group by locationname;
