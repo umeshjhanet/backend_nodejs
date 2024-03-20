@@ -1,6 +1,8 @@
 const express = require('express');
 var cors = require('cors')
 const mysql = require('mysql2');
+const multer = require('multer');
+const path = require('path');
 
 
 const app = express();
@@ -30,6 +32,29 @@ const misdb = mysql.createConnection({
   password:'root',
   database:'updc_misdb',
 })
+
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
+app.post('/upload', upload.single('file'), (req, res) => {
+  console.log('File upload request received');
+  if (!req.file) {
+    console.log('No file uploaded');
+    return res.status(400).send('No file uploaded');
+  }
+  console.log('File saved:', req.file.filename);
+  res.send('File uploaded successfully');
+});
+
 
 var corsOptions = {
   origin: "https://cen-dboard.vercel.app",
@@ -697,43 +722,50 @@ app.get('/group_master', cors(corsOptions), (req, res) => {
 });
 
 app.get("/csv", cors(corsOptions), (req, res, next) => {
-  const getCsv = `SELECT tt.LocationName as 'LocationName',
-    tt.ScannedNoOfFilesTotal as 'Total_Files',
-    tt.ScannedNoOfImagesTotal as 'Total_Images',
-    td.ScannedNoOfFilesToday as 'Today_Files ',
-    td.ScannedNoOfImagesToday as 'Today_Images ',
-    tdyes.ScannedNoOfFilesYes as 'Yes_Files ',
-    tdyes.ScannedNoOfImagesYes as 'Yes_Images ',
-    tdprev.ScannedNoOfFilesPrev as 'Prev_Files ',
-    tdprev.ScannedNoOfImagesPrev as 'Prev_Images '
-    FROM (SELECT s.locationname 'LocationName',
-    SUM(s.scanfiles) as 'ScannedNoOfFilesTotal',
-    SUM(s.scanimages) as 'ScannedNoOfImagesTotal'
-    FROM scanned s
-    GROUP BY s.locationname) tt
-    LEFT JOIN (SELECT s.locationname 'LocationName',
-    SUM(s.scanfiles) as 'ScannedNoOfFilesYes',
-    SUM(s.scanimages) as 'ScannedNoOfImagesYes'
-    FROM scanned s 
-    WHERE s.scandate = CURDATE() - INTERVAL 1 DAY
-    GROUP BY s.locationname) tdyes
-    ON tdyes.LocationName = tt.LocationName 
-    LEFT JOIN (SELECT s.locationname 'LocationName',
-    SUM(s.scanfiles) as 'ScannedNoOfFilesPrev',
-    SUM(s.scanimages) as 'ScannedNoOfImagesPrev'
-    FROM scanned s 
-    WHERE s.scandate = CURDATE() - INTERVAL 2 DAY 
-    GROUP BY s.locationname) tdprev 
-    ON tdprev.LocationName = tt.LocationName 
-    LEFT JOIN (SELECT s.locationname 'LocationName',
-    SUM(s.scanfiles) as 'ScannedNoOfFilesToday',
-    SUM(s.scanimages) as 'ScannedNoOfImagesToday'
-    FROM scanned s 
-    WHERE s.scandate = CURDATE()
-    GROUP BY s.locationname) td 
-    ON td.LocationName = tt.LocationName 
-    ORDER BY tt.LocationName;`
-  mysql22.query(getCsv, (error, result, field) => {
+  const locationNames = req.query.locationname; // Retrieve location names from query parameter
+
+  let query = `SELECT tt.LocationName as 'LocationName',
+  tt.ScannedNoOfFilesTotal as 'Total_Files',
+  tt.ScannedNoOfImagesTotal as 'Total_Images',
+  td.ScannedNoOfFilesToday as 'Today_Files ',
+  td.ScannedNoOfImagesToday as 'Today_Images ',
+  tdyes.ScannedNoOfFilesYes as 'Yes_Files ',
+  tdyes.ScannedNoOfImagesYes as 'Yes_Images ',
+  tdprev.ScannedNoOfFilesPrev as 'Prev_Files ',
+  tdprev.ScannedNoOfImagesPrev as 'Prev_Images '
+  FROM (SELECT s.locationname 'LocationName',
+  SUM(s.scanfiles) as 'ScannedNoOfFilesTotal',
+  SUM(s.scanimages) as 'ScannedNoOfImagesTotal'
+  FROM scanned s
+  GROUP BY s.locationname) tt
+  LEFT JOIN (SELECT s.locationname 'LocationName',
+  SUM(s.scanfiles) as 'ScannedNoOfFilesYes',
+  SUM(s.scanimages) as 'ScannedNoOfImagesYes'
+  FROM scanned s 
+  WHERE s.scandate = CURDATE() - INTERVAL 1 DAY
+  GROUP BY s.locationname) tdyes
+  ON tdyes.LocationName = tt.LocationName 
+  LEFT JOIN (SELECT s.locationname 'LocationName',
+  SUM(s.scanfiles) as 'ScannedNoOfFilesPrev',
+  SUM(s.scanimages) as 'ScannedNoOfImagesPrev'
+  FROM scanned s 
+  WHERE s.scandate = CURDATE() - INTERVAL 2 DAY 
+  GROUP BY s.locationname) tdprev 
+  ON tdprev.LocationName = tt.LocationName 
+  LEFT JOIN (SELECT s.locationname 'LocationName',
+  SUM(s.scanfiles) as 'ScannedNoOfFilesToday',
+  SUM(s.scanimages) as 'ScannedNoOfImagesToday'
+  FROM scanned s 
+  WHERE s.scandate = CURDATE()
+  GROUP BY s.locationname) td 
+  ON td.LocationName = tt.LocationName 
+  ORDER BY tt.LocationName;`
+
+  if (locationNames && locationNames.length > 0) {
+    query += ` AND locationname IN (?)`;
+  }
+
+  mysql22.query(query, [locationNames], (error, result, field) => {
     if (error) {
       console.error("Error occured when export csv:", err);
       res.status(500).json({ error: 'An error occurred while exporting csv file' });
@@ -829,6 +861,34 @@ app.get('/api/uploadlog', (req, res) => {
     res.json(results);
   });
 });
+app.get("/privilege",cors(corsOptions),(req,res)=>{
+  misdb.query("select role_id,user_role from tbl_user_roles order by user_role asc;",(err,results)=>{
+    if(err){
+      throw err;
+    }
+    res.json(results);
+  })
+})
+
+
+app.get("/storage",cors(corsOptions),(req,res)=>{
+  misdb.query("select * from tbl_storage_level",(err,results)=>{
+    if(err){
+      throw err;
+    }
+    res.json(results);
+  })
+})
+
+
+app.get("/reporting",cors(corsOptions),(req,res)=>{
+  misdb.query("select * from tbl_user_master where user_id  and active_inactive_users='1' order by first_name,last_name asc;",(err,results)=>{
+    if(err){
+      throw err;
+    }
+    res.json(results)
+  })
+})
 
 
 // app.get('/site_MPData', cors(corsOptions), (req, res) => {
@@ -837,6 +897,65 @@ app.get('/api/uploadlog', (req, res) => {
 //     res.json(results);
 //   });
 // });
+
+
+
+app.post("/createuser", (req, res) => {
+  const { data1, data2, data3, data4, data5 } = req.body;
+
+
+  const query1 = "INSERT INTO tbl_user_master (user_email_id, first_name, middle_name, last_name, password, designation, phone_no, profile_picture, superior_name, superior_email, user_created_date, emp_id, last_pass_change, login_disabled_date, fpi_template, fpi_template_two, fpi_template_three, fpi_template_four, lang, locations, user_type) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+
+  misdb.query(query1, [data1.user_email_id, data1.first_name, data1.middle_name, data1.last_name,data1.password, data1.designation, data1.phone_no, data1.profile_picture, data1.superior_name, data1.superior_email, data1.user_created_date, data1.emp_id, data1.last_pass_change, data1.login_disabled_date, data1.fpi_template, data1.fpi_template_two, data1.fpi_template_three, data1.fpi_template_four, data1.lang, data1.locations, data1.user_type], (err, results) => {
+    if (err) {
+      console.error("Error inserting user:", err);
+      return res.status(500).json({ error: "An error occurred while inserting user" });
+    }
+
+
+    const user_id = results.insertId;
+
+
+    const query2 = "INSERT INTO tbl_storagelevel_to_permission (user_id, sl_id) VALUES (?, ?)";
+    misdb.query(query2, [data2.user_id, data2.sl_id], (err, results) => {
+      if (err) {
+        console.error("Error linking user with permission:", err);
+        return res.status(500).json({ error: "An error occurred while linking user with permission" });
+      }
+
+
+      const query3 = "INSERT INTO tbl_ezeefile_logs (user_id, user_name, action_name, start_date, system_ip, remarks) VALUES (?, ?, ?, ?, ?, ?)";
+      misdb.query(query3, [data3.user_id, data3.user_name, data3.action_name, data3.start_date, data3.system_ip, data3.remarks], (err, results) => {
+        if (err) {
+          console.error("Error inserting user log:", err);
+          return res.status(500).json({ error: "An error occurred while inserting user log" });
+        }
+
+
+        const query4 = "INSERT INTO tbl_bridge_role_to_um (role_id, user_ids) VALUES (?, ?)";
+        misdb.query(query4, [data4.role_id, data4.user_ids], (err, results) => {
+          if (err) {
+            console.error("Error inserting user role:", err);
+            return res.status(500).json({ error: "An error occurred while inserting user role" });
+          }
+
+
+          const query5 = "INSERT INTO tbl_bridge_grp_to_um (group_id, user_ids) VALUES (?, ?)";
+          misdb.query(query5, [data5.group_id, data5.user_ids], (err, results) => {
+            if (err) {
+              console.error("Error inserting user group:", err);
+              return res.status(500).json({ error: "An error occurred while inserting user group" });
+            }
+
+
+            res.status(200).json({ message: "User added successfully", id: user_id });
+          });
+        });
+      });
+    });
+  });
+});
 
 app.post('/userinfo', (req, res) => {
   const { name, email, phone, password } = req.body;
