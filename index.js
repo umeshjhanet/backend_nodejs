@@ -23,13 +23,13 @@ const mysql22 = mysql.createConnection({
   password: 'Root$#123',
   database: 'ezeefile_updc',
 })
-const misdb = mysql.createConnection({
-  host: 'localhost',
-  port:'3306',
-  user:'root',
-  password:'root',
-  database:'updc_misdb',
-})
+// const misdb = mysql.createConnection({
+//   host: 'localhost',
+//   port:'3306',
+//   user:'root',
+//   password:'root',
+//   database:'updc_misdb',
+// })
 
 var corsOptions = {
   origin: "https://cen-dboard.vercel.app",
@@ -683,18 +683,18 @@ app.get('/graph10', cors(corsOptions), (req, res) => {
     res.json(results);
   });
 });
-app.get('/user_master', cors(corsOptions), (req, res) => {
-  misdb.query("SELECT * FROM tbl_user_master where user_id and active_inactive_users = '1' order by first_name, last_name asc;", (err, results) => {
-    if (err) throw err;
-    res.json(results);
-  });
-});
-app.get('/group_master', cors(corsOptions), (req, res) => {
-  misdb.query("SELECT group_id,group_name FROM tbl_group_master order by group_name asc;", (err, results) => {
-    if (err) throw err;
-    res.json(results);
-  });
-});
+// // app.get('/user_master', cors(corsOptions), (req, res) => {
+// //   misdb.query("SELECT * FROM tbl_user_master where user_id and active_inactive_users = '1' order by first_name, last_name asc;", (err, results) => {
+// //     if (err) throw err;
+// //     res.json(results);
+// //   });
+// // });
+// app.get('/group_master', cors(corsOptions), (req, res) => {
+//   misdb.query("SELECT group_id,group_name FROM tbl_group_master order by group_name asc;", (err, results) => {
+//     if (err) throw err;
+//     res.json(results);
+//   });
+// });
 
 app.get("/csv", cors(corsOptions), (req, res, next) => {
   const getCsv = `SELECT tt.LocationName as 'LocationName',
@@ -854,20 +854,20 @@ app.post('/userinfo', (req, res) => {
   });
 });
 
-app.post("/usermasterinfo", (req, res) => {
-  const { Desig_ID, Desig_name } = req.body;
-  const query = 'INSERT INTO tbl_user_master (Desig_ID, Desig_name) VALUES (?, ?)';
-  misdb.query(query, [Desig_ID, Desig_name], (err, result) => {
-    if (err) {
-      console.error("Error inserting user:", err);
-      res.status(500).json({ error: "An error occurred while inserting user" });
-    } else {
-      res
-        .status(200)
-        .json({ message: "User added successfully", id: result.insertId });
-    }
-  });
-});
+// app.post("/usermasterinfo", (req, res) => {
+//   const { Desig_ID, Desig_name } = req.body;
+//   const query = 'INSERT INTO tbl_user_master (Desig_ID, Desig_name) VALUES (?, ?)';
+//   misdb.query(query, [Desig_ID, Desig_name], (err, result) => {
+//     if (err) {
+//       console.error("Error inserting user:", err);
+//       res.status(500).json({ error: "An error occurred while inserting user" });
+//     } else {
+//       res
+//         .status(200)
+//         .json({ message: "User added successfully", id: result.insertId });
+//     }
+//   });
+// });
 app.post('/usermasterinfo', (req, res) => {
   const { Desig_ID, Desig_name } = req.body;
   const query = 'INSERT INTO tbl_designation_master (Desig_ID, Desig_name) VALUES (?, ?)';
