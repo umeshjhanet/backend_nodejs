@@ -1,6 +1,9 @@
-const express = require("express");
-var cors = require("cors");
-const mysql = require("mysql2");
+const express = require('express');
+var cors = require('cors')
+const mysql = require('mysql2');
+const multer = require('multer');
+const path = require('path');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -9,11 +12,11 @@ app.use(express.json());
 app.use(cors());
 
 const db = mysql.createConnection({
-  host: "mysqldb-nodejs-db-nodejs.a.aivencloud.com",
-  port: "15292",
-  user: "avnadmin",
-  password: "AVNS_7_-TDwKOAalQNuMTrXl",
-  database: "defaultdb",
+  host: 'mysqldb-nodejs-db-nodejs.a.aivencloud.com',
+  port: '15292',
+  user: 'avnadmin',
+  password: 'AVNS_7_-TDwKOAalQNuMTrXl',
+  database: 'defaultdb',
 });
 const mysql22 = mysql.createConnection({
   host: "192.168.3.124",
@@ -50,8 +53,8 @@ app.options("/users", cors(corsOptions), (req, res) => {
   res.sendStatus(200);
 });
 
-app.get("/users", cors(corsOptions), (req, res) => {
-  db.query("SELECT * from userinfo;", (err, results) => {
+app.get('/users', cors(corsOptions), (req, res) => {
+  db.query('SELECT * from userinfo;', (err, results) => {
     if (err) throw err;
     res.json(results);
   });
@@ -217,13 +220,14 @@ if (locationName) {
     res.end();
   });
 });
-app.get("/graph", cors(corsOptions), (req, res) => {
+
+app.get('/graph', cors(corsOptions), (req, res) => {
   db.query("SELECT * from graph_test;", (err, results) => {
     if (err) throw err;
     res.json(results);
   });
 });
-app.get("/scanned_images", cors(corsOptions), (req, res) => {
+app.get('/scanned_images', cors(corsOptions), (req, res) => {
   db.query("SELECT * FROM scanned_images;", (err, results) => {
     if (err) throw err;
     res.json(results);
@@ -236,14 +240,12 @@ app.get("/scanned_images", cors(corsOptions), (req, res) => {
 //   });
 // });
 
-app.get("/locations", cors(corsOptions), (req, res) => {
-  mysql22.query(
-    "SELECT LocationID, LocationName from locationmaster;",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
+
+app.get('/locations', cors(corsOptions), (req, res) => {
+  mysql22.query("SELECT LocationID, LocationName from locationmaster;", (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
 });
 
 app.get("/locations/:id", cors(corsOptions), (req, res) => {
@@ -284,41 +286,70 @@ mysql22.query(
     }
   );
 });
-app.get("/graph5", cors(corsOptions), (req, res) => {
-  // const query = "SELECT scandate,SUM(scanfiles) as scannedfiles FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK)AND scandate <= NOW() GROUP BY scandate;"
-  const query =
-    "SELECT DATE_FORMAT(scandate, '%Y-%m-%d') as scandate, SUM(scanfiles) as scannedfiles FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK) AND scandate <= NOW() GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');";
-  updcPrayagraj.query(query, (err, results) => {
-    if (err) throw err;
-    res.json(results);
-  });
-});
+app.get('/graph5', cors(corsOptions), (req, res) => {
+  const { locationNames } = req.query;
+  let query = "SELECT DATE_FORMAT(scandate, '%Y-%m-%d') as scandate, SUM(scanfiles) as scannedfiles FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK) AND scandate <= NOW()";
 
-app.get("/graph6", cors(corsOptions), (req, res) => {
-  const query =
-    "SELECT DATE_FORMAT(scandate, '%Y-%m-%d') as scandate, SUM(scanimages) as scannedimages FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK) AND scandate <= NOW() GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');";
-  updcPrayagraj.query(query, (err, results) => {
-    if (err) throw err;
-    res.json(results);
-  });
-});
+  if (locationNames && locationNames.length > 0) {
+    query += " AND locationname IN (?)";
+  }
 
-app.get("/graphmonth", cors(corsOptions), (req, res) => {
-  const query =
-    "SELECT DATE_FORMAT(s.scandate,'%Y-%m-%d') AS 'scandate',SUM(s.scanimages) AS 'Scanned No Of Images' FROM scanned s WHERE s.scandate BETWEEN CURDATE() - INTERVAL 30 DAY AND CURDATE() GROUP BY DATE_FORMAT(s.scandate,'%Y-%m-%d');";
-  updcPrayagraj.query(query, (err, results) => {
-    if (err) throw err;
-    res.json(results);
-  });
-});
-app.get("/graph1", cors(corsOptions), (req, res) => {
-  mysql22.query(
-    "SELECT sum(exportpdffiles) as 'Export PDF' , sum(cbslqafiles)-sum(clientqaacceptfiles) as 'Client QA Pending', sum(clientqaacceptfiles) as 'Client QA',  sum(cbslqafiles) as 'CBSL QA', sum(scanfiles) as 'Scanned', sum(inventoryfiles) as 'Received'  from scanned;",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
+  query += " GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');";
+
+  mysql22.query(query, [locationNames], (err, results) => {
+    if(err) {
+      console.error('Error executing query:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
-  );
+    res.json(results);
+  });
+});
+
+app.get('/graph6', cors(corsOptions), (req, res) => {
+  const { locationNames } = req.query;
+  let query = "SELECT DATE_FORMAT(scandate, '%Y-%m-%d') as scandate, SUM(scanimages) as scannedimages FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK) AND scandate <= NOW()";
+
+  if (locationNames && locationNames.length > 0) {
+    query += " AND locationname IN (?)";
+  }
+
+  query += " GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');";
+
+  mysql22.query(query, [locationNames], (err, results) => {
+    if(err) {
+      console.error('Error executing query:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+    res.json(results);
+  });
+});
+app.get('/graphmonth', cors(corsOptions), (req, res) => {
+  const { locationNames } = req.query;
+  let query = "SELECT DATE_FORMAT(scandate,'%Y-%m-%d') AS 'scandate',SUM(scanimages) AS 'Scanned No Of Images' FROM scanned s WHERE scandate BETWEEN CURDATE() - INTERVAL 30 DAY AND CURDATE() ";
+
+  if (locationNames && locationNames.length > 0) {
+    query += " AND locationname IN (?)";
+  }
+
+  query += " GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');";
+
+  mysql22.query(query, [locationNames], (err, results) => {
+    if(err) {
+      console.error('Error executing query:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+    res.json(results);
+  });
+});
+
+
+
+
+app.get('/reportTable', cors(corsOptions), (req, res) => {
+  mysql22.query("SELECT locationid,locationname as 'LocationName',sum(`inventoryfiles`) as 'CollectionFiles',sum(`inventoryimages`) as 'CollectionImages',sum(`scanfiles`) as 'ScannedFiles',sum(`scanimages`) as 'ScannedImages',sum(`qcfiles`) as 'QCFiles',sum(`qcimages`) as 'QCImages',sum(`flaggingfiles`)  as 'FlaggingFiles',sum(`flaggingimages`)  as 'FlaggingImages',sum(`indexfiles`) as 'IndexingFiles',sum(`indeximages`) as 'IndexingImages',sum(`cbslqafiles`)  as 'CBSL_QAFiles',sum(`cbslqaimages`) as 'CBSL_QAImages',sum(`exportpdffiles`)  as 'Export_PdfFiles', sum(`exportpdfimages`)  as 'Export_PdfImages',sum(`clientqaacceptfiles`)  as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`)  as 'Client_QA_AcceptedImages',sum(`clientqarejectfiles`)  as 'Client_QA_RejectedFiles',sum(`clientqarejectimages`)  as 'Client_QA_RejectedImages',sum(`digisignfiles`)  as 'Digi_SignFiles',sum(`digisignimages`)  as 'Digi_SignImages' FROM scanned  group by LocationName;", (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
 });
 
 // app.get('/graph1LocationWise', cors(corsOptions), (req, res) => {
@@ -356,7 +387,7 @@ app.get('/graph1LocationWise', cors(corsOptions), (req, res) => {
                  sum(scanfiles) as 'Scanned', sum(inventoryfiles) as 'Received' 
                  FROM scanned WHERE locationname = ?`;
 
-  mysql22.query(query, [locationName], (err, results) => {
+  mysql22.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -365,88 +396,6 @@ app.get('/graph1LocationWise', cors(corsOptions), (req, res) => {
     res.send(results);
   });
 });
-
-// app.get("/api/locationwisetabularData", (req, res) => {
-//   const locationName = req.query.locationName; // Assuming locationName is passed as a query parameter
-
-//   // Construct the SQL query
-//   let query = `
-//       SELECT 
-//       tt.LocationName as 'LocationName',
-//       tt.ScannedNoOfFilesTotal as 'Total_Files',
-//       tt.ScannedNoOfImagesTotal as 'Total_Images',
-//       td.ScannedNoOfFilesToday as 'Today_Files',
-//       td.ScannedNoOfImagesToday as 'Today_Images',
-//       tdyes.ScannedNoOfFilesYes as 'Yes_Files',
-//       tdyes.ScannedNoOfImagesYes as 'Yes_Images',
-//       tdprev.ScannedNoOfFilesPrev as 'Prev_Files',
-//       tdprev.ScannedNoOfImagesPrev as 'Prev_Images'
-//       FROM 
-//         (SELECT 
-//           s.locationname AS 'LocationName',
-//           SUM(s.scanfiles) AS 'ScannedNoOfFilesTotal',
-//           SUM(s.scanimages) AS 'ScannedNoOfImagesTotal' 
-//         FROM 
-//           scanned s 
-//         WHERE 
-//           s.locationname = ? 
-//         GROUP BY 
-//           s.locationname) tt 
-//         LEFT JOIN 
-//           (SELECT 
-//             s.locationname AS 'LocationName',
-//             SUM(s.scanfiles) AS 'ScannedNoOfFilesYes',
-//             SUM(s.scanimages) AS 'ScannedNoOfImagesYes' 
-//           FROM 
-//             scanned s 
-//           WHERE 
-//             s.scandate = CURDATE() - INTERVAL 1 DAY 
-//           GROUP BY 
-//             s.locationname) tdyes 
-//         ON 
-//           tdyes.LocationName = tt.LocationName 
-//         LEFT JOIN 
-//           (SELECT 
-//             s.locationname AS 'LocationName',
-//             SUM(s.scanfiles) AS 'ScannedNoOfFilesPrev',
-//             SUM(s.scanimages) AS 'ScannedNoOfImagesPrev' 
-//           FROM 
-//             scanned s 
-//           WHERE 
-//             s.scandate = CURDATE() - INTERVAL 2 DAY 
-//           GROUP BY 
-//             s.locationname) tdprev 
-//         ON 
-//           tdprev.LocationName = tt.LocationName 
-//         LEFT JOIN 
-//           (SELECT 
-//             s.locationname AS 'LocationName',
-//             SUM(s.scanfiles) AS 'ScannedNoOfFilesToday',
-//             SUM(s.scanimages) AS 'ScannedNoOfImagesToday' 
-//           FROM 
-//             scanned s 
-//           WHERE 
-//             s.scandate = CURDATE() 
-//           GROUP BY 
-//             s.locationname) td 
-//         ON 
-//           td.LocationName = tt.LocationName 
-//       ORDER BY 
-//         tt.LocationName
-//     `;
-
-//   // Execute the query with locationName as parameter
-//   mysql22.query(
-//     query,
-//     [locationName, locationName, locationName],
-//     (err, results) => {
-//       if (err) {
-//         throw err;
-//       }
-//       res.json(results);
-//     }
-//   );
-// });
 
 
 
@@ -467,6 +416,7 @@ app.get("/reportTable", cors(corsOptions), (req, res) => {
     }
   );
 });
+
 
 app.get("/reporttablecsv", cors(corsOptions), (req, res, next) => {
   const locationName = req.query.locationName;
@@ -575,23 +525,47 @@ if (locationName) {
   });
 });
 
-app.get("/api/data", (req, res) => {
+app.get('/graph10', cors(corsOptions), (req, res) => {
+  const locationNames = req.query.locationname; // Retrieve location names from query parameter
+
+  let query = "SELECT locationname AS 'Location Name', sum(scanimages) AS 'Images' FROM scanned";
+
+  if (locationNames && locationNames.length > 0) {
+    query += ` WHERE locationname IN (?)`;
+  }
+
+  query += " GROUP BY locationname";
+
+  mysql22.query(query, [locationNames], (err, results) => {
+    if (err) {
+      console.error('Error executing query:', err);
+      return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
+    }
+    res.json(results); // Send JSON response with query results
+  });
+});
+
+
+
+
+
+app.get('/api/data', (req, res) => {
   let query1Results, query2Results;
 
   // Execute first query
-  connection.query("SELECT * FROM table1", (error1, results1, fields1) => {
+  connection.query('SELECT * FROM table1', (error1, results1, fields1) => {
     if (error1) {
-      console.error("Error executing first query: ", error1);
-      res.status(500).json({ error: "Internal server error" });
+      console.error('Error executing first query: ', error1);
+      res.status(500).json({ error: 'Internal server error' });
       return;
     }
     query1Results = results1;
 
     // Execute second query
-    connection.query("SELECT * FROM table2", (error2, results2, fields2) => {
+    connection.query('SELECT * FROM table2', (error2, results2, fields2) => {
       if (error2) {
-        console.error("Error executing second query: ", error2);
-        res.status(500).json({ error: "Internal server error" });
+        console.error('Error executing second query: ', error2);
+        res.status(500).json({ error: 'Internal server error' });
         return;
       }
       query2Results = results2;
@@ -603,54 +577,20 @@ app.get("/api/data", (req, res) => {
   });
 });
 
-app.get("/reportLocationWiseTable", cors(corsOptions), (req, res) => {
-  const locationName = req.query.locationname; // Retrieve location name from query parameter
 
-  if (!locationName) {
-    return res.status(400).json({ error: "Location name is required" }); // Return error if location name is not provided
-  }
 
-  const query = `
-        SELECT
-            locationid,
-            locationname AS 'LocationName',
-            SUM(inventoryfiles) AS 'CollectionFiles',
-            SUM(inventoryimages) AS 'CollectionImages',
-            SUM(scanfiles) AS 'ScannedFiles',
-            SUM(scanimages) AS 'ScannedImages',
-            SUM(qcfiles) AS 'QCFiles',
-            SUM(qcimages) AS 'QCImages',
-            SUM(flaggingfiles) AS 'FlaggingFiles',
-            SUM(flaggingimages) AS 'FlaggingImages',
-            SUM(indexfiles) AS 'IndexingFiles',
-            SUM(indeximages) AS 'IndexingImages',
-            SUM(cbslqafiles) AS 'CBSL_QAFiles',
-            SUM(cbslqaimages) AS 'CBSL_QAImages',
-            SUM(exportpdffiles) AS 'Export_PdfFiles',
-            SUM(exportpdfimages) AS 'Export_PdfImages',
-            SUM(clientqaacceptfiles) AS 'Client_QA_AcceptedFiles',
-            SUM(clientqaacceptimages) AS 'Client_QA_AcceptedImages',
-            SUM(clientqarejectfiles) AS 'Client_QA_RejectedFiles',
-            SUM(clientqarejectimages) AS 'Client_QA_RejectedImages',
-            SUM(digisignfiles) AS 'Digi_SignFiles',
-            SUM(digisignimages) AS 'Digi_SignImages'
-        FROM
-            scanned
-        WHERE
-            locationname = ?
-        GROUP BY
-            LocationName;`;
 
-  mysql22.query(query, [locationName], (err, results) => {
-    if (err) {
-      console.error("Error executing query:", err);
-      return res.status(500).json({ error: "Internal Server Error" }); // Send error response
-    }
-    res.json(results); // Send JSON response with query results
-  });
-});
 
-app.get("/api/tabularData", (req, res) => {
+
+
+
+
+
+
+
+
+
+app.get('/api/tabularData', (req, res) => {
   const locationId = req.query.locationid; // Assuming locationid is passed as a query parameter
 
   let query = `
@@ -745,152 +685,39 @@ app.get("/api/tabularData", (req, res) => {
   });
 });
 
-app.get("/api/locationwisetabularData", (req, res) => {
-  const locationName = req.query.locationName; // Assuming locationName is passed as a query parameter
 
-  // Construct the SQL query
-  let query = `
-      SELECT 
-      tt.LocationName as 'LocationName',
-      tt.ScannedNoOfFilesTotal as 'Total_Files',
-      tt.ScannedNoOfImagesTotal as 'Total_Images',
-      td.ScannedNoOfFilesToday as 'Today_Files',
-      td.ScannedNoOfImagesToday as 'Today_Images',
-      tdyes.ScannedNoOfFilesYes as 'Yes_Files',
-      tdyes.ScannedNoOfImagesYes as 'Yes_Images',
-      tdprev.ScannedNoOfFilesPrev as 'Prev_Files',
-      tdprev.ScannedNoOfImagesPrev as 'Prev_Images'
-      FROM 
-        (SELECT 
-          s.locationname AS 'LocationName',
-          SUM(s.scanfiles) AS 'ScannedNoOfFilesTotal',
-          SUM(s.scanimages) AS 'ScannedNoOfImagesTotal' 
-        FROM 
-          scanned s 
-        WHERE 
-          s.locationname = ? 
-        GROUP BY 
-          s.locationname) tt 
-        LEFT JOIN 
-          (SELECT 
-            s.locationname AS 'LocationName',
-            SUM(s.scanfiles) AS 'ScannedNoOfFilesYes',
-            SUM(s.scanimages) AS 'ScannedNoOfImagesYes' 
-          FROM 
-            scanned s 
-          WHERE 
-            s.scandate = CURDATE() - INTERVAL 1 DAY 
-          GROUP BY 
-            s.locationname) tdyes 
-        ON 
-          tdyes.LocationName = tt.LocationName 
-        LEFT JOIN 
-          (SELECT 
-            s.locationname AS 'LocationName',
-            SUM(s.scanfiles) AS 'ScannedNoOfFilesPrev',
-            SUM(s.scanimages) AS 'ScannedNoOfImagesPrev' 
-          FROM 
-            scanned s 
-          WHERE 
-            s.scandate = CURDATE() - INTERVAL 2 DAY 
-          GROUP BY 
-            s.locationname) tdprev 
-        ON 
-          tdprev.LocationName = tt.LocationName 
-        LEFT JOIN 
-          (SELECT 
-            s.locationname AS 'LocationName',
-            SUM(s.scanfiles) AS 'ScannedNoOfFilesToday',
-            SUM(s.scanimages) AS 'ScannedNoOfImagesToday' 
-          FROM 
-            scanned s 
-          WHERE 
-            s.scandate = CURDATE() 
-          GROUP BY 
-            s.locationname) td 
-        ON 
-          td.LocationName = tt.LocationName 
-      ORDER BY 
-        tt.LocationName
-    `;
 
-  // Execute the query with locationName as parameter
-  mysql22.query(
-    query,
-    [locationName, locationName, locationName],
-    (err, results) => {
-      if (err) {
-        throw err;
-      }
-      res.json(results);
-    }
-  );
+
+
+
+
+
+
+
+
+
+app.get('/graph2', cors(corsOptions), (req, res) => {
+  mysql22.query("SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned;", (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
 });
 
-app.get("/graph2", cors(corsOptions), (req, res) => {
-  updcPrayagraj.query(
-    "SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned;",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
-});
-app.get("/civil", cors(corsOptions), (req, res) => {
-  updcPrayagraj.query(
-    "SELECT  sum(scanfiles) as 'Civil Files' , sum(scanimages) as 'Civil Images' FROM `scanned` where  casetypename Not Like '%Criminal%';",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
-});
-app.get("/criminal", cors(corsOptions), (req, res) => {
-  updcPrayagraj.query(
-    "SELECT  sum(scanfiles) as 'Criminal Files' , sum(scanimages) as 'Criminal Images' FROM `scanned` where  casetypename Like '%Criminal%';",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
-});
-app.get("/graph7", cors(corsOptions), (req, res) => {
-  updcPrayagraj.query(
-    "SELECT sum(exportpdffiles) as 'Export PDF' , sum(cbslqafiles)-sum(clientqaacceptfiles) as 'Client QA Pending', sum(clientqaacceptfiles) as 'Client QA',  sum(cbslqafiles) as 'CBSL QA', sum(scanfiles) as 'Scanned', sum(inventoryfiles) as 'Received'  from scanned where (DATE(`inventorydate`) = CURDATE()-1 or DATE(`scandate`) = CURDATE()-1 or DATE(`cbslqadate`) = CURDATE()-1 or DATE(`clientqaacceptdate`) = CURDATE()-1 or DATE(`exportdate`) = CURDATE()-1);",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
-});
-app.get("/graph8", cors(corsOptions), (req, res) => {
-  updcPrayagraj.query(
-    "SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned where (DATE(`inventorydate`) = CURDATE()-1 or DATE(`scandate`) = CURDATE()-1 or DATE(`cbslqadate`) = CURDATE()-1 or DATE(`clientqaacceptdate`) = CURDATE()-1 or DATE(`exportdate`) = CURDATE()-1);",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
+
+
+app.get('/graph9', cors(corsOptions), (req, res) => {
+  mysql22.query("SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned where scandate= CURDATE()- INTERVAL 1 DAY group by locationname;", (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
 });
 
-app.get("/graph9", cors(corsOptions), (req, res) => {
-  updcPrayagraj.query(
-    "SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned where scandate= CURDATE()- INTERVAL 1 DAY group by locationname;",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
-});
 
-app.get("/graph10", cors(corsOptions), (req, res) => {
-  updcPrayagraj.query(
-    "SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned group by locationname;",
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
+app.get('/graph10', cors(corsOptions), (req, res) => {
+  mysql22.query("SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned group by locationname;", (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
 });
 
 app.use("/searchlocation", (req, res, next) => {
@@ -1285,15 +1112,13 @@ app.get("/tabularData", cors(corsOptions), (req, res) => {
                GROUP BY s.locationname) td
            ON td.LocationName = tt.LocationName
     ORDER BY tt.LocationName;
-  ;`,
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
+  ;`, (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
 });
-app.get("/api/uploadlog", (req, res) => {
-  let whereClause = ""; // Assuming you will pass the where clause as a query parameter
+app.get('/api/uploadlog', (req, res) => {
+  let whereClause = ''; // Assuming you will pass the where clause as a query parameter
 
   let query = `
     SELECT 
@@ -1394,10 +1219,87 @@ app.get('/user_email', cors(corsOptions), (req, res) => {
   updcPrayagraj.query("SELECT user_email_id FROM tbl_user_master;", (err, results) => {
     if (err) throw err;
     res.json(results);
+  })
+})
+
+
+app.get("/reporting",cors(corsOptions),(req,res)=>{
+  misdb.query("select * from tbl_user_master where user_id  and active_inactive_users='1' order by first_name,last_name asc;",(err,results)=>{
+    if(err){
+      throw err;
+    }
+    res.json(results)
+  })
+})
+
+
+// app.get('/site_MPData', cors(corsOptions), (req, res) => {
+//   updcPrayagraj.query("SELECT * FROM tbl_site_mp;", (err,results) => {
+//     if(err) throw err;
+//     res.json(results);
+//   });
+// });
+
+
+
+app.post("/createuser", (req, res) => {
+  const { data1, data2, data3, data4, data5 } = req.body;
+
+
+  const query1 = "INSERT INTO tbl_user_master (user_email_id, first_name, middle_name, last_name, password, designation, phone_no, profile_picture, superior_name, superior_email, user_created_date, emp_id, last_pass_change, login_disabled_date, fpi_template, fpi_template_two, fpi_template_three, fpi_template_four, lang, locations, user_type) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+
+  misdb.query(query1, [data1.user_email_id, data1.first_name, data1.middle_name, data1.last_name,data1.password, data1.designation, data1.phone_no, data1.profile_picture, data1.superior_name, data1.superior_email, data1.user_created_date, data1.emp_id, data1.last_pass_change, data1.login_disabled_date, data1.fpi_template, data1.fpi_template_two, data1.fpi_template_three, data1.fpi_template_four, data1.lang, data1.locations, data1.user_type], (err, results) => {
+    if (err) {
+      console.error("Error inserting user:", err);
+      return res.status(500).json({ error: "An error occurred while inserting user" });
+    }
+
+
+    const user_id = results.insertId;
+
+
+    const query2 = "INSERT INTO tbl_storagelevel_to_permission (user_id, sl_id) VALUES (?, ?)";
+    misdb.query(query2, [data2.user_id, data2.sl_id], (err, results) => {
+      if (err) {
+        console.error("Error linking user with permission:", err);
+        return res.status(500).json({ error: "An error occurred while linking user with permission" });
+      }
+
+
+      const query3 = "INSERT INTO tbl_ezeefile_logs (user_id, user_name, action_name, start_date, system_ip, remarks) VALUES (?, ?, ?, ?, ?, ?)";
+      misdb.query(query3, [data3.user_id, data3.user_name, data3.action_name, data3.start_date, data3.system_ip, data3.remarks], (err, results) => {
+        if (err) {
+          console.error("Error inserting user log:", err);
+          return res.status(500).json({ error: "An error occurred while inserting user log" });
+        }
+
+
+        const query4 = "INSERT INTO tbl_bridge_role_to_um (role_id, user_ids) VALUES (?, ?)";
+        misdb.query(query4, [data4.role_id, data4.user_ids], (err, results) => {
+          if (err) {
+            console.error("Error inserting user role:", err);
+            return res.status(500).json({ error: "An error occurred while inserting user role" });
+          }
+
+
+          const query5 = "INSERT INTO tbl_bridge_grp_to_um (group_id, user_ids) VALUES (?, ?)";
+          misdb.query(query5, [data5.group_id, data5.user_ids], (err, results) => {
+            if (err) {
+              console.error("Error inserting user group:", err);
+              return res.status(500).json({ error: "An error occurred while inserting user group" });
+            }
+
+
+            res.status(200).json({ message: "User added successfully", id: user_id });
+          });
+        });
+      });
+    });
   });
 });
 
-app.post("/userinfo", (req, res) => {
+app.post('/userinfo', (req, res) => {
   const { name, email, phone, password } = req.body;
   const query =
     "INSERT INTO userinfo (username, email, phone, password) VALUES (?, ?, ?, ?)";
@@ -1487,11 +1389,9 @@ app.post("/usermasterinfo", (req, res) => {
   updcPrayagraj.query(query, [Desig_ID, Desig_name], (err, result) => {
     if (err) {
       console.error("Error inserting user:", err);
-      res.status(500).json({ error: "An error occurred while inserting user" });
+      res.status(500).json({ error: 'An error occurred while inserting user' });
     } else {
-      res
-        .status(200)
-        .json({ message: "User added successfully", id: result.insertId });
+      res.status(200).json({ message: 'User added successfully', id: result.insertId });
     }
   });
 });
@@ -1794,12 +1694,8 @@ app.put("/usermasterupdate/:Desig_ID", (req, res) => {
       console.error("Error inserting user:", err);
       res.status(500).json({ error: "An error occurred while updating user" });
     } else {
-      res
-        .status(200)
-        .json({
-          message: "User updated successfully",
-          id: req.params.Desig_ID,
-        });
+      res.status(200).json({ message: 'User updated successfully', id: req.params.Desig_ID });
+
     }
   });
 });
