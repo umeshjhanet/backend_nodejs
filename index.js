@@ -6,11 +6,14 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const xlsx = require('xlsx');
+const dbConfig = require('./dbConfig');
 
 
 const hostname = "192.168.3.48";
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+const connection = mysql.createConnection(dbConfig);
 
 app.use(express.json());
 app.use(cors());
@@ -44,10 +47,6 @@ const misdb = mysql.createConnection({
   database: "updc_misdb",
 });
 
-var corsOptions = {
-  origin: "192.168.3.48",
-  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
-}
 
 db.connect((err) => {
   if (err) {
@@ -60,9 +59,7 @@ db.connect((err) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-app.options("/users", cors(corsOptions), (req, res) => {
-  res.sendStatus(200);
-});
+
 
 
 const transporter = nodemailer.createTransport({
@@ -123,7 +120,7 @@ app.post("/uploadExcel", upload.single("file"), (req, res) => {
 
 
   // Execute the query with the data
-  misdb.query(query, [dataWithManualFields], (err, result) => {
+  mysql22.query(query, [dataWithManualFields], (err, result) => {
     if (err) {
       console.error("Error inserting data:", err);
       res.status(500).json({ error: "An error occurred while inserting data" });
@@ -149,20 +146,20 @@ app.post('/upload', upload.single('file'), (req, res) => {
 });
 
 
-app.get('/users', cors(corsOptions), (req, res) => {
-  misdb.query('SELECT * from tbl_user_master;', (err, results) => {
+app.get('/users',  (req, res) => {
+  mysql22.query('SELECT * from tbl_user_master;', (err, results) => {
     if (err) throw err;
     res.json(results);
   });
 });
 
-app.get('/summaryLocation', cors(corsOptions), (req, res) => {
+app.get('/summaryLocation',  (req, res) => {
   const locationName = req.query.locationname; // Retrieve location name from query parameter
 
   if (!locationName) {
     return res.status(400).json({ error: "Location name is required" }); // Return error if location name is not provided
   }
-  mysql22.query(
+  connection.query(
     "SELECT locationname, Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s WHERE locationname = ? GROUP BY locationname;",
     [locationName], // Pass locationName as parameter
     (err, results) => {
@@ -175,7 +172,7 @@ app.get('/summaryLocation', cors(corsOptions), (req, res) => {
 
 
 
-app.get("/summary", cors(corsOptions), (req, res) => {
+app.get("/summary",  (req, res) => {
   const { startDate, endDate } = req.query;
   let query = "SELECT Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s";
   const queryParams = [];
@@ -195,7 +192,7 @@ app.get("/summary", cors(corsOptions), (req, res) => {
   }
 
 
-  mysql22.query(query, queryParams, (err, results) => {
+  connection.query(query, queryParams, (err, results) => {
     if (err) {
       console.error("Error fetching summary data:", err);
       res.status(500).json({ error: "Error fetching summary data" });
@@ -204,7 +201,7 @@ app.get("/summary", cors(corsOptions), (req, res) => {
     res.json(results);
   });
 });
-app.get("/summarycsv", cors(corsOptions), (req, res, next) => {
+app.get("/summarycsv",  (req, res, next) => {
   let locationNames = req.query.locationName;
   let startDate = req.query.startDate;
   let endDate = req.query.endDate;
@@ -283,7 +280,7 @@ app.get("/summarycsv", cors(corsOptions), (req, res, next) => {
 
 
 
-  mysql22.query(getCsv, (error, result, field) => {
+  connection.query(getCsv, (error, result, field) => {
     if (error) {
       console.error("Error occurred when exporting CSV:", error);
       res.status(500).json({ error: "An error occurred while exporting the CSV file" });
@@ -352,7 +349,7 @@ app.get("/summarycsv", cors(corsOptions), (req, res, next) => {
 
 
 
-app.get('/reportTable', cors(corsOptions), (req, res) => {
+app.get('/reportTable',  (req, res) => {
   const { startDate, endDate } = req.query;
 
 
@@ -394,7 +391,7 @@ app.get('/reportTable', cors(corsOptions), (req, res) => {
   query += ' GROUP BY LocationName';
 
 
-  mysql22.query(query, queryParams, (err, results) => {
+  connection.query(query, queryParams, (err, results) => {
     if (err) {
       console.error('Error fetching report table:', err);
       res.status(500).json({ error: 'Error fetching report table' });
@@ -403,7 +400,7 @@ app.get('/reportTable', cors(corsOptions), (req, res) => {
     res.json(results);
   });
 });
-app.get("/reporttablecsv", cors(corsOptions), (req, res, next) => {
+app.get("/reporttablecsv",  (req, res, next) => {
   let locationNames = req.query.locationName;
   let startDate=req.query.startDate;
   let endDate=req.query.endDate;
@@ -462,7 +459,7 @@ app.get("/reporttablecsv", cors(corsOptions), (req, res, next) => {
   GROUP BY  locationname;`;
 
 
-  mysql22.query(getCsv, (error, result, field) => {
+  connection.query(getCsv, (error, result, field) => {
     if (error) {
       console.error("Error occured when export csv:", err);
       res
@@ -549,21 +546,21 @@ app.get("/reporttablecsv", cors(corsOptions), (req, res, next) => {
 
 
 
-app.get('/graph', cors(corsOptions), (req, res) => {
+app.get('/graph',  (req, res) => {
   db.query("SELECT * from graph_test;", (err, results) => {
     if (err) throw err;
     res.json(results);
   });
 });
-app.get('/scanned_images', cors(corsOptions), (req, res) => {
+app.get('/scanned_images',  (req, res) => {
   db.query("SELECT * FROM scanned_images;", (err, results) => {
     if (err) throw err;
     res.json(results);
   });
 });
 
-app.get('/locations', cors(corsOptions), (req, res) => {
-  mysql22.query("SELECT LocationID, LocationName from locationmaster;", (err, results) => {
+app.get('/locations',  (req, res) => {
+  connection.query("SELECT LocationID, LocationName from locationmaster;", (err, results) => {
     if (err) throw err;
     res.json(results);
   });
@@ -571,14 +568,14 @@ app.get('/locations', cors(corsOptions), (req, res) => {
 
 
 
-app.get('/usermaster', cors(corsOptions), (req, res) => {
-  mysql22.query("SELECT user_id, first_name,last_name,designation FROM tbl_user_master where designation in ('project manager', 'site manager', 'site incharge','project head');", (err, results) => {
+app.get('/usermaster',  (req, res) => {
+  connection.query("SELECT user_id, first_name,last_name,designation FROM tbl_user_master where designation in ('project manager', 'site manager', 'site incharge','project head');", (err, results) => {
     if (err) throw err;
     res.json(results);
   });
 });
-app.get("/designations", cors(corsOptions), (req, res) => {
-  mysql22.query(
+app.get("/designations",  (req, res) => {
+  connection.query(
     "SELECT * FROM tbl_designation_master;",
     (err, results) => {
       if (err) throw err;
@@ -586,7 +583,7 @@ app.get("/designations", cors(corsOptions), (req, res) => {
     }
   );
 });
-app.get('/graph5', cors(corsOptions), (req, res) => {
+app.get('/graph5',  (req, res) => {
   const { locationNames } = req.query;
   let query = "SELECT DATE_FORMAT(scandate, '%Y-%m-%d') as scandate, SUM(scanfiles) as scannedfiles FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK) AND scandate <= NOW()";
 
@@ -596,7 +593,7 @@ app.get('/graph5', cors(corsOptions), (req, res) => {
 
   query += " GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');";
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' });
@@ -605,7 +602,7 @@ app.get('/graph5', cors(corsOptions), (req, res) => {
   });
 });
 
-app.get('/graph6', cors(corsOptions), (req, res) => {
+app.get('/graph6',  (req, res) => {
   const { locationNames } = req.query;
   let query = "SELECT DATE_FORMAT(scandate, '%Y-%m-%d') as scandate, SUM(scanimages) as scannedimages FROM scanned s WHERE scandate >= DATE_SUB(NOW(), INTERVAL 1 WEEK) AND scandate <= NOW()";
 
@@ -615,7 +612,7 @@ app.get('/graph6', cors(corsOptions), (req, res) => {
 
   query += " GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');";
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' });
@@ -623,7 +620,8 @@ app.get('/graph6', cors(corsOptions), (req, res) => {
     res.json(results);
   });
 });
-app.get('/graphmonth', cors(corsOptions), (req, res) => {
+
+app.get('/graphmonth',  (req, res) => {
   const { locationNames } = req.query;
   let query = "SELECT DATE_FORMAT(scandate,'%Y-%m-%d') AS 'scandate',SUM(scanimages) AS 'Scanned No Of Images' FROM scanned s WHERE scandate BETWEEN CURDATE() - INTERVAL 30 DAY AND CURDATE() ";
 
@@ -633,7 +631,7 @@ app.get('/graphmonth', cors(corsOptions), (req, res) => {
 
   query += " GROUP BY DATE_FORMAT(scandate, '%Y-%m-%d');";
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' });
@@ -645,7 +643,7 @@ app.get('/graphmonth', cors(corsOptions), (req, res) => {
 
 
 
-app.get('/reportLocationWiseTable', cors(corsOptions), (req, res) => {
+app.get('/reportLocationWiseTable',  (req, res) => {
   const locationName = req.query.locationname;
   const { startDate, endDate } = req.query; // Retrieve query parameters
 
@@ -689,7 +687,7 @@ app.get('/reportLocationWiseTable', cors(corsOptions), (req, res) => {
 
   query += " GROUP BY LocationName;";
 
-  mysql22.query(query, [locationName, startDate, endDate], (err, results) => {
+  connection.query(query, [locationName, startDate, endDate], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' });
@@ -697,7 +695,7 @@ app.get('/reportLocationWiseTable', cors(corsOptions), (req, res) => {
     res.json(results);
   });
 });
-app.get('/graph1LocationWise', cors(corsOptions), (req, res) => {
+app.get('/graph1LocationWise',  (req, res) => {
   const locationNames = req.query.locationname; // Retrieve location names from query parameter
 
   let query = `
@@ -717,7 +715,7 @@ app.get('/graph1LocationWise', cors(corsOptions), (req, res) => {
     query += ` WHERE locationname IN (?)`;
   }
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -726,7 +724,7 @@ app.get('/graph1LocationWise', cors(corsOptions), (req, res) => {
   });
 });
 
-app.get('/graph2', cors(corsOptions), (req, res) => {
+app.get('/graph2',  (req, res) => {
   const locationNames = req.query.locationname; // Retrieve location name from query parameter
 
   let query = `
@@ -743,7 +741,7 @@ app.get('/graph2', cors(corsOptions), (req, res) => {
     query += ` WHERE locationname IN (?)`;
   }
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -751,7 +749,8 @@ app.get('/graph2', cors(corsOptions), (req, res) => {
     res.json(results); // Send JSON response with query results
   });
 });
-app.get('/civil', cors(corsOptions), (req, res) => {
+
+app.get('/civil',  (req, res) => {
   const locationNames = req.query.locationname; // Retrieve location names from query parameter
 
   let query = "SELECT sum(scanfiles) as 'Civil Files', sum(scanimages) as 'Civil Images' FROM `scanned` WHERE casetypename NOT LIKE '%Criminal%'";
@@ -760,7 +759,7 @@ app.get('/civil', cors(corsOptions), (req, res) => {
     query += " AND locationname IN (?)";
   }
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -768,7 +767,8 @@ app.get('/civil', cors(corsOptions), (req, res) => {
     res.json(results); // Send JSON response with query results
   });
 });
-app.get('/criminal', cors(corsOptions), (req, res) => {
+
+app.get('/criminal',  (req, res) => {
   const locationNames = req.query.locationname; // Retrieve location names from query parameter
 
   let query = "SELECT  sum(scanfiles) as 'Criminal Files' , sum(scanimages) as 'Criminal Images' FROM `scanned` WHERE  casetypename Like '%Criminal%'";
@@ -778,7 +778,7 @@ app.get('/criminal', cors(corsOptions), (req, res) => {
     query += " AND locationname IN (?)";
   }
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -787,7 +787,7 @@ app.get('/criminal', cors(corsOptions), (req, res) => {
   });
 });
 
-app.get('/graph7', cors(corsOptions), (req, res) => {
+app.get('/graph7',  (req, res) => {
   const locationNames = req.query.locationname; // Retrieve location names from query parameter
 
   let query = "SELECT sum(exportpdffiles) as 'Export PDF', " +
@@ -807,7 +807,7 @@ app.get('/graph7', cors(corsOptions), (req, res) => {
     query += ` AND locationname IN (?)`;
   }
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -816,7 +816,7 @@ app.get('/graph7', cors(corsOptions), (req, res) => {
   });
 });
 
-app.get('/graph8', cors(corsOptions), (req, res) => {
+app.get('/graph8',  (req, res) => {
   const locationNames = req.query.locationname; // Retrieve location names from query parameter
 
   let query = "SELECT sum(exportpdfimages) as 'Export PDF', " +
@@ -836,7 +836,7 @@ app.get('/graph8', cors(corsOptions), (req, res) => {
     query += ` AND locationname IN (?)`;
   }
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -845,24 +845,25 @@ app.get('/graph8', cors(corsOptions), (req, res) => {
   });
 });
 
-app.get('/graph8', cors(corsOptions), (req, res) => {
-  const locationNames = req.query.locationname; // Retrieve location name from query parameter
+// app.get('/graph8',  (req, res) => {
+//   const locationNames = req.query.locationname; // Retrieve location name from query parameter
 
-  let query = "SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned where (DATE(`inventorydate`) = CURDATE()-1 or DATE(`scandate`) = CURDATE()-1 or DATE(`cbslqadate`) = CURDATE()-1 or DATE(`clientqaacceptdate`) = CURDATE()-1 or DATE(`exportdate`) = CURDATE()-1);";
+//   let query = "SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned where (DATE(`inventorydate`) = CURDATE()-1 or DATE(`scandate`) = CURDATE()-1 or DATE(`cbslqadate`) = CURDATE()-1 or DATE(`clientqaacceptdate`) = CURDATE()-1 or DATE(`exportdate`) = CURDATE()-1);";
 
-  if (locationNames && locationNames.length > 0) {
-    query += `  AND locationname IN (?)`;
-  }
+//   if (locationNames && locationNames.length > 0) {
+//     query += `  AND locationname IN (?)`;
+//   }
 
-  mysql22.query(query, [locationNames], (err, results) => {
-    if (err) {
-      console.error('Error executing query:', err);
-      return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
-    }
-    res.json(results); // Send JSON response with query results
-  });
-});
-app.get('/graph9', cors(corsOptions), (req, res) => {
+//   connection.query(query, [locationNames], (err, results) => {
+//     if (err) {
+//       console.error('Error executing query:', err);
+//       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
+//     }
+//     res.json(results); // Send JSON response with query results
+//   });
+// });
+
+app.get('/graph9',  (req, res) => {
   const locationNames = req.query.locationname; // Retrieve location names from query parameter
 
   let query = "SELECT locationname AS 'Location Name', sum(scanimages) AS 'Images' FROM scanned WHERE scandate = CURDATE() - INTERVAL 1 DAY";
@@ -873,7 +874,7 @@ app.get('/graph9', cors(corsOptions), (req, res) => {
 
   query += " GROUP BY locationname";
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -882,7 +883,7 @@ app.get('/graph9', cors(corsOptions), (req, res) => {
   });
 });
 
-app.get('/graph10', cors(corsOptions), (req, res) => {
+app.get('/graph10',  (req, res) => {
   const locationNames = req.query.locationname; // Retrieve location names from query parameter
 
   let query = "SELECT locationname AS 'Location Name', sum(scanimages) AS 'Images' FROM scanned";
@@ -893,7 +894,7 @@ app.get('/graph10', cors(corsOptions), (req, res) => {
 
   query += " GROUP BY locationname";
 
-  mysql22.query(query, [locationNames], (err, results) => {
+  connection.query(query, [locationNames], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).json({ error: 'Internal Server Error' }); // Send error response
@@ -1013,7 +1014,7 @@ app.get('/api/tabularData', (req, res) => {
     `;
 
   // Execute the query
-  mysql22.query(query, (err, results) => {
+  connection.query(query, (err, results) => {
     if (err) {
       throw err;
     }
@@ -1021,22 +1022,22 @@ app.get('/api/tabularData', (req, res) => {
   });
 });
 
-app.get('/graph2', cors(corsOptions), (req, res) => {
-  mysql22.query("SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned;", (err, results) => {
+app.get('/graph2',  (req, res) => {
+  connection.query("SELECT sum(exportpdfimages) as 'Export PDF' , sum(cbslqaimages)-sum(clientqaacceptimages) as 'Client QA Pending', sum(clientqaacceptimages) as 'Client QA',  sum(cbslqaimages) as 'CBSL QA', sum(scanimages) as 'Scanned', sum(inventoryimages) as 'Received'  from scanned;", (err, results) => {
     if (err) throw err;
     res.json(results);
   });
 });
 
-app.get('/graph9', cors(corsOptions), (req, res) => {
-  mysql22.query("SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned where scandate= CURDATE()- INTERVAL 1 DAY group by locationname;", (err, results) => {
+app.get('/graph9',  (req, res) => {
+  connection.query("SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned where scandate= CURDATE()- INTERVAL 1 DAY group by locationname;", (err, results) => {
     if (err) throw err;
     res.json(results);
   });
 });
 
-app.get('/graph10', cors(corsOptions), (req, res) => {
-  mysql22.query("SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned group by locationname;", (err, results) => {
+app.get('/graph10',  (req, res) => {
+  connection.query("SELECT locationname 'Location Name',sum(`scanimages`) as 'Images' FROM scanned group by locationname;", (err, results) => {
     if (err) throw err;
     res.json(results);
   });
@@ -1045,7 +1046,7 @@ app.get('/graph10', cors(corsOptions), (req, res) => {
 app.use("/searchlocation", (req, res, next) => {
   let data =
     "SELECT locationid,locationname as 'LocationName',sum(`inventoryfiles`) as 'CollectionFiles',sum(`inventoryimages`) as 'CollectionImages',sum(`scanfiles`) as 'ScannedFiles',sum(`scanimages`) as 'ScannedImages',sum(`qcfiles`) as 'QCFiles',sum(`qcimages`) as 'QCImages',sum(`flaggingfiles`)  as 'FlaggingFiles',sum(`flaggingimages`)  as 'FlaggingImages',sum(`indexfiles`) as 'IndexingFiles',sum(`indeximages`) as 'IndexingImages',sum(`cbslqafiles`)  as 'CBSL_QAFiles',sum(`cbslqaimages`) as 'CBSL_QAImages',sum(`exportpdffiles`)  as 'Export_PdfFiles', sum(`exportpdfimages`)  as 'Export_PdfImages',sum(`clientqaacceptfiles`)  as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`)  as 'Client QA AcceptedImages',sum(`clientqarejectfiles`)  as 'Client_QA_RejectedFiles',sum(`clientqarejectimages`)  as 'Client_QA_RejectedImages',sum(`digisignfiles`)  as 'Digi_SignFiles',sum(`digisignimages`)  as 'Digi_SignImages' FROM scanned  group by locationname;";
-  misdb.query(data, (error, results, fields) => {
+  mysql22.query(data, (error, results, fields) => {
     if (error) {
       res.status(500).send(error.message);
       return;
@@ -1071,7 +1072,7 @@ function formatDate(date) {
   return `${day}-${month}-${year}`;
 }
 
-app.get("/csv", cors(corsOptions), (req, res, next) => {
+app.get("/csv",  (req, res, next) => {
   // Extract location names from the request query parameters
   let locationNames = req.query.locationName;
 
@@ -1133,7 +1134,7 @@ app.get("/csv", cors(corsOptions), (req, res, next) => {
     ORDER BY tt.LocationName;`;
 
 
-  mysql22.query(getCsv, (error, result, field) => {
+  connection.query(getCsv, (error, result, field) => {
     if (error) {
       console.error("Error occurred when exporting csv:", error);
       res.status(500).json({ error: "An error occurred while exporting the CSV file" });
@@ -1179,8 +1180,8 @@ app.get("/csv", cors(corsOptions), (req, res, next) => {
   });
 });
 
-app.get('/tabularData', cors(corsOptions), (req, res) => {
-  mysql22.query(`
+app.get('/tabularData',  (req, res) => {
+  connection.query(`
     SELECT tt.LocationName as 'LocationName',
            tt.ScannedNoOfFilesTotal as 'Total_Files',
            tt.ScannedNoOfImagesTotal as 'Total_Images',
@@ -1245,7 +1246,7 @@ app.get('/api/uploadlog', (req, res) => {
   `;
 
   // Execute the query
-  mysql22.query(query, (err, results) => {
+  connection.query(query, (err, results) => {
     if (err) {
       throw err;
     }
@@ -1255,8 +1256,8 @@ app.get('/api/uploadlog', (req, res) => {
 
 
 
-app.get('/group_master', cors(corsOptions), (req, res) => {
-  misdb.query("select group_id,group_name from tbl_group_master order by group_name asc;", (err, results) => {
+app.get('/group_master',  (req, res) => {
+  mysql22.query("select group_id,group_name from tbl_group_master order by group_name asc;", (err, results) => {
     if (err) {
       throw err;
     }
@@ -1264,8 +1265,8 @@ app.get('/group_master', cors(corsOptions), (req, res) => {
   })
 })
 
-app.get("/privilege", cors(corsOptions), (req, res) => {
-  misdb.query("select role_id,user_role from tbl_user_roles order by user_role asc;", (err, results) => {
+app.get("/privilege",  (req, res) => {
+  mysql22.query("select role_id,user_role from tbl_user_roles order by user_role asc;", (err, results) => {
     if (err) {
       throw err;
     }
@@ -1273,8 +1274,8 @@ app.get("/privilege", cors(corsOptions), (req, res) => {
   })
 })
 
-app.get("/storage", cors(corsOptions), (req, res) => {
-  misdb.query("select * from tbl_storage_level", (err, results) => {
+app.get("/storage",  (req, res) => {
+  mysql22.query("select * from tbl_storage_level", (err, results) => {
     if (err) {
       throw err;
     }
@@ -1282,16 +1283,16 @@ app.get("/storage", cors(corsOptions), (req, res) => {
   })
 })
 
-app.get("/reporting", cors(corsOptions), (req, res) => {
-  misdb.query("select * from tbl_user_master where user_id  and active_inactive_users='1' order by first_name,last_name asc;", (err, results) => {
+app.get("/reporting",  (req, res) => {
+  mysql22.query("select * from tbl_user_master where user_id  and active_inactive_users='1' order by first_name,last_name asc;", (err, results) => {
     if (err) {
       throw err;
     }
     res.json(results)
   })
 })
-app.get('/user_master', cors(corsOptions), (req, res) => {
-  misdb.query("SELECT u.*, r.user_role FROM tbl_user_master u " +
+app.get('/user_master',  (req, res) => {
+  mysql22.query("SELECT u.*, r.user_role FROM tbl_user_master u " +
     "LEFT JOIN tbl_bridge_role_to_um br ON u.user_id = br.user_ids " +
     "LEFT JOIN tbl_user_roles r ON br.role_id = r.role_id " +
     "ORDER BY u.first_name, u.last_name ASC;",
@@ -1313,7 +1314,7 @@ app.get('/user_master', cors(corsOptions), (req, res) => {
 //   const sql = 'INSERT INTO your_table_name (column1, column2, column3) VALUES ?';
 //   const values = data.map(row => [row.column1, row.column2, row.column3]);
 
-//   misdb.query(sql, [values], (err, result) => {
+//   mysql22.query(sql, [values], (err, result) => {
 //     if (err) {
 //       console.error('Error inserting data into database:', err);
 //       res.status(500).send('Internal Server Error');
@@ -1359,7 +1360,7 @@ app.post("/site_MP", (req, res) => {
   } = req.body;
   const query =
     "INSERT INTO tbl_site_mp (PH_Id,PO_Id, PM_Id, PCo_Id, SM_Id,Location_ID, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-  misdb.query(
+  mysql22.query(
     query,
     [
       PH_Id,
@@ -1555,7 +1556,7 @@ app.post("/login", (req, res) => {
       }
       if (result) {
         const updateQuery = "UPDATE tbl_user_master SET last_active_login = NOW() WHERE user_email_id = ?";
-        misdb.query(updateQuery, [user_email_id], (err) => {
+        mysql22.query(updateQuery, [user_email_id], (err) => {
           if (err) {
             console.error("Error updating last_active_login:", err);
             return res.status(500).json({ error: "An error occurred while updating last_active_login" });
@@ -1567,7 +1568,7 @@ app.post("/login", (req, res) => {
           LEFT JOIN tbl_user_roles r ON br.role_id = r.role_id
           WHERE u.user_email_id = ?
         `;
-          misdb.query(selectRolesQuery, [user_email_id], (err,roleRows) => {
+          mysql22.query(selectRolesQuery, [user_email_id], (err,roleRows) => {
             if (err) {
               console.error("Error fetching user role:", err);
               return res.status(500).json({ error: "An error occurred while fetching user role" });
@@ -1608,7 +1609,7 @@ app.post("/createuser", (req, res) => {
   // console.log("data",req.body);
 
   const selectQuery = "SELECT * FROM tbl_user_master WHERE user_email_id=?";
-  misdb.query(selectQuery, [data.user_email_id], (err, rows) => {
+  mysql22.query(selectQuery, [data.user_email_id], (err, rows) => {
     if (err) {
       console.error("Error checking user existence:", err);
       return res.status(500).json({ error: "An error occurred while checking user existence" });
@@ -1620,7 +1621,7 @@ app.post("/createuser", (req, res) => {
     }
 
     const query1 = "INSERT INTO tbl_user_master (user_email_id,first_name,middle_name,last_name,password,designation,phone_no,profile_picture,superior_name,superior_email,user_created_date,emp_id,last_pass_change,login_disabled_date,fpi_template, fpi_template_two,fpi_template_three,fpi_template_four,lang,locations,user_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    misdb.query(query1, [data.user_email_id, data.first_name, data.middle_name, data.last_name, data.password, data.designation, data.phone_no, data.profile_picture, data.superior_name, data.superior_email, data.user_created_date, data.emp_id, data.last_pass_change, data.login_disabled_date, data.fpi_template, data.fpi_template_two, data.fpi_template_three, data.fpi_template_four, data.lang, data.locations, data.user_type], (err, results) => {
+    mysql22.query(query1, [data.user_email_id, data.first_name, data.middle_name, data.last_name, data.password, data.designation, data.phone_no, data.profile_picture, data.superior_name, data.superior_email, data.user_created_date, data.emp_id, data.last_pass_change, data.login_disabled_date, data.fpi_template, data.fpi_template_two, data.fpi_template_three, data.fpi_template_four, data.lang, data.locations, data.user_type], (err, results) => {
       if (err) {
         console.error("Error inserting user:", err);
         res.status(500).json({ error: "An error occurred while inserting user" });
@@ -1634,7 +1635,7 @@ app.post("/createuser", (req, res) => {
   app.post("/groupmasterinfo", (req, res) => {
     const { group_id, group_name } = req.body;
     const query = 'INSERT INTO tbl_group_master (group_id, group_name) VALUES (?, ?)';
-    misdb.query(query, [group_id, group_name], (err, result) => {
+    mysql22.query(query, [group_id, group_name], (err, result) => {
       if (err) {
         console.error("Error inserting user:", err);
         res.status(500).json({ error: "An error occurred while inserting user" });
@@ -1649,7 +1650,7 @@ app.post("/createuser", (req, res) => {
     const { Desig_ID, Desig_name } = req.body;
     const query =
       "INSERT INTO tbl_designation_master (Desig_ID, Desig_name) VALUES (?, ?)";
-    misdb.query(query, [Desig_ID, Desig_name], (err, result) => {
+    mysql22.query(query, [Desig_ID, Desig_name], (err, result) => {
       if (err) {
         console.error("Error inserting user:", err);
         res.status(500).json({ error: 'An error occurred while inserting user' });
@@ -1661,7 +1662,7 @@ app.post("/createuser", (req, res) => {
   // app.post('/site_MP', (req, res) => {
   //   const { PH_Id, PO_Id, PM_Id, PCo_Id, SM_Id, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id, } = req.body;
   //   const query = 'INSERT INTO tbl_site_mp (PH_Id,PO_Id, PM_Id, PCo_Id, SM_Id, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_ID) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
-  //   misdb.query(query, [PH_Id, PO_Id, PM_Id, PCo_Id, SM_Id, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id,], (err, result) => {
+  //   mysql22.query(query, [PH_Id, PO_Id, PM_Id, PCo_Id, SM_Id, Coll_Index_MP, Barc_MP, Barc_TF, Barc_TI, Page_No_MP, Prepare_MP, Prepare_TF, Prepare_TI, Scan_MP, Cover_Page_MP, Cover_Page_TF, Rescan_MP, Image_QC_MP, Doc_MP, Index_MP, CBSL_QA_MP, Ready_Cust_QA_MP, Cust_QA_Done_MP, PDF_Export_MP, Refilling_Files_MP, Refilling_Files_TF, Refilling_Files_TI, Inventory_MP, Location_Id,], (err, result) => {
   //     if (err) {
   //       console.error("Error inserting user:", err);
   //       res.status(500).json({ error: 'An error occurred while inserting user' });
@@ -1679,7 +1680,7 @@ app.post("/createuser", (req, res) => {
     const { Desig_name, Desig_ID } = req.body;
     const query =
       "UPDATE tbl_designation_master SET Desig_name = ? where Desig_ID = ?;";
-    misdb.query(query, [Desig_name, Desig_ID], (err, result) => {
+    mysql22.query(query, [Desig_name, Desig_ID], (err, result) => {
       if (err) {
         console.error("Error inserting user:", err);
         res.status(500).json({ error: "An error occurred while updating user" });
@@ -1746,7 +1747,7 @@ app.post("/createuser", (req, res) => {
       user_id
     ];
 
-    misdb.query(query1, params1, (err, results) => {
+    mysql22.query(query1, params1, (err, results) => {
       if (err) {
         console.error("Error updating user:", err);
         return res.status(500).json({ error: "An error occurred while updating user" });
@@ -1765,7 +1766,7 @@ app.post("/createuser", (req, res) => {
         data.user_ids,
 
       ];
-      misdb.query(query2, params2, (err, results) => {
+      mysql22.query(query2, params2, (err, results) => {
         if (err) {
           console.error("Error updating user role:", err);
           return res.status(500).json({ error: "An error occurred while updating user role" });
@@ -1783,7 +1784,7 @@ app.post("/createuser", (req, res) => {
           data.user_ids,
 
         ];
-        misdb.query(query3, params3, (err, results) => {
+        mysql22.query(query3, params3, (err, results) => {
           if (err) {
             console.error("Error updating user group:", err);
             return res.status(500).json({ error: "An error occurred while updating user group" });
@@ -1794,21 +1795,32 @@ app.post("/createuser", (req, res) => {
     });
   });
 
+  // app.delete("/createuserdelete/:user_id", (req, res) => {
+  //   const { user_id } = req.params;
+  //   mysql22.query(
+  //     "DELETE FROM tbl_user_master WHERE user_id = ?",
+  //     [user_id],
+  //     (err) => {
+  //       if (err) throw err;
+  //       res.json({ message: "User deleted successfully" });
+  //     }
+  //   );
+  // });
   app.delete("/createuserdelete/:user_id", (req, res) => {
-    const { user_id } = req.params;
-    misdb.query(
-      "DELETE FROM tbl_user_master WHERE user_id = ?",
-      [user_id],
-      (err) => {
-        if (err) throw err;
-        res.json({ message: "User deleted successfully" });
-      }
-    );
-  });
+  const { user_id } = req.params;
+  misdb.query(
+    "DELETE FROM tbl_user_master WHERE user_id = ?",
+    [user_id],
+    (err) => {
+      if (err) throw err;
+      res.json({ message: "User deleted successfully" });
+    }
+  );
+});
 
   app.delete("/usermasterdelete/:Desig_ID", (req, res) => {
     const { Desig_ID } = req.params;
-    misdb.query(
+    mysql22.query(
       "DELETE FROM tbl_designation_master WHERE Desig_ID = ?",
       [Desig_ID],
       (err) => {
@@ -1818,3 +1830,4 @@ app.post("/createuser", (req, res) => {
     );
   });
 });
+
