@@ -7,6 +7,8 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const xlsx = require('xlsx');
 const dbConfig = require('./dbConfig');
+// const jwt = require('jsonwebtoken');
+// const fetch = require('node-fetch');
 
 
 const hostname = "192.168.3.48";
@@ -46,6 +48,13 @@ const misdb = mysql.createConnection({
   password: "root",
   database: "updc_misdb",
 });
+// const teldb = mysql.createConnection({
+//   host: "192.168.3.48",
+//   port: "3306",
+//   user: "root",
+//   password: "Root$#@342",
+//   database: "ezeefile_updc",
+// });
 
 
 db.connect((err) => {
@@ -153,54 +162,195 @@ app.get('/users',  (req, res) => {
   });
 });
 
-app.get('/summaryLocation',  (req, res) => {
-  const locationName = req.query.locationname; // Retrieve location name from query parameter
 
-  if (!locationName) {
-    return res.status(400).json({ error: "Location name is required" }); // Return error if location name is not provided
-  }
-  connection.query(
-    "SELECT locationname, Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s WHERE locationname = ? GROUP BY locationname;",
-    [locationName], // Pass locationName as parameter
-    (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    }
-  );
-});
+// app.get("/summary", (req, res) => {
+//   const { startDate, endDate, locationName } = req.query;
+//   let query = "SELECT  Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s";
+//   const queryParams = [];
+
+//   // Check if startDate and endDate are provided
+//   if (startDate && endDate) {
+//     query += ` WHERE (s.inventorydate BETWEEN ? AND ?)
+//                 OR (s.scandate BETWEEN ? AND ?)
+//                 OR (s.qcdate BETWEEN ? AND ?)
+//                 OR (s.flaggingdate BETWEEN ? AND ?)
+//                 OR (s.indexdate BETWEEN ? AND ?)
+//                 OR (s.cbslqadate BETWEEN ? AND ?)
+//                 OR (s.exportdate BETWEEN ? AND ?)
+//                 OR (s.clientqaacceptdate BETWEEN ? AND ?)
+//                 OR (s.digisigndate BETWEEN ? AND ?)`;
+//     // Push startDate and endDate multiple times (for each condition in WHERE clause)
+//     for (let i = 0; i < 18; i++) {
+//       queryParams.push(startDate, endDate);
+//     }
+//   }
+
+//   // Check if locationName is provided
+//   if (locationName) {
+//     const locations = Array.isArray(locationName) ? locationName : [locationName];
+//     // Construct OR condition for multiple locations
+//     const locationConditions = locations.map(() => 's.locationname = ?').join(' OR ');
+//     // Add WHERE clause if startDate and endDate are already present
+//     query += startDate && endDate ? ` AND (${locationConditions})` : ` WHERE (${locationConditions})`;
+//     queryParams.push(...locations);
+//   }
+
+//   connection.query(query, queryParams, (err, results) => {
+//     if (err) {
+//       console.error("Error fetching summary data:", err);
+//       res.status(500).json({ error: "Error fetching summary data" });
+//       return;
+//     }
+//     res.json(results);
+//   });
+// });
 
 
 
 
-app.get("/summary",  (req, res) => {
-  const { startDate, endDate } = req.query;
-  let query = "SELECT Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s";
+
+// app.get("/summary", (req, res) => {
+//   const { startDate, endDate } = req.query;
+//   let query = "SELECT Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s";
+//   const queryParams = [];
+//   if (startDate && endDate) {
+//     query += ` WHERE (s.inventorydate BETWEEN ? AND ?)
+//                 OR (s.scandate BETWEEN ? AND ?)
+//                 OR (s.qcdate BETWEEN ? AND ?)
+//                 OR (s.flaggingdate BETWEEN ? AND ?)
+//                 OR (s.indexdate BETWEEN ? AND ?)
+//                 OR (s.cbslqadate BETWEEN ? AND ?)
+//                 OR (s.exportdate BETWEEN ? AND ?)
+//                 OR (s.clientqaacceptdate BETWEEN ? AND ?)
+//                 OR (s.digisigndate BETWEEN ? AND ?)`;
+//     // Push startDate and endDate only once per parameter
+//     for (let i = 0; i < 9; i++) {
+//       queryParams.push(startDate, endDate);
+//     }
+//   }
+
+//   mysql22.query(query, queryParams, (err, results) => {
+//     if (err) {
+//       console.error("Error fetching summary data:", err);
+//       res.status(500).json({ error: "Error fetching summary data" });
+//       return;
+//     }
+//     res.json(results);
+//   });
+// });
+
+// app.get("/summarylocationname", (req, res) => {
+//   const locationName = req.query.locationname; // Retrieve location name from query parameter
+//   // const { startDate, endDate } = req.query; // Retrieve startDate and endDate from query parameters
+
+//   if (!locationName) {
+//     return res.status(400).json({ error: "Location name is required" }); // Return error if location name is not provided
+//   }
+
+//   let query = "SELECT locationname, Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s WHERE locationname = ? AND (s.inventorydate BETWEEN ? AND ?) GROUP BY locationname;";
+//   const queryParams = [locationName]; // Pass locationName, startDate, and endDate as parameters
+
+//   mysql22.query(query, queryParams, (err, results) => {
+//     if (err) {
+//       console.error("Error fetching summary location data:", err);
+//       res.status(500).json({ error: "Error fetching summary location data" });
+//       return;
+//     }
+//     res.json(results);
+//   });
+// });
+
+
+
+app.get("/summary", async (req, res) => {
+  const { startDate, endDate, locationName } = req.query;
+
+  // Base query for location-wise data
+  let locationQuery = "SELECT locationname, Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s";
+
+  // Base query for total data
+  let totalQuery = "SELECT Count(distinct locationid) as TotalLocation, sum(`inventoryfiles`) as 'CollectionFiles', sum(`inventoryimages`) as 'CollectionImages', sum(`scanfiles`) as 'ScannedFiles', sum(`scanimages`) as 'ScannedImages', sum(`qcfiles`) as 'QCFiles', sum(`qcimages`) as 'QCImages', sum(`flaggingfiles`) as 'FlaggingFiles', sum(`flaggingimages`) as 'FlaggingImages', sum(`indexfiles`) as 'IndexingFiles', sum(`indeximages`) as 'IndexingImages', sum(`cbslqafiles`) as 'CBSL_QAFiles', sum(`cbslqaimages`) as 'CBSL_QAImages', sum(`exportpdffiles`) as 'Export_PdfFiles', sum(`exportpdfimages`) as 'Export_PdfImages', sum(`clientqaacceptfiles`) as 'Client_QA_AcceptedFiles', sum(`clientqaacceptimages`) as 'Client_QA_AcceptedImages', sum(`clientqarejectfiles`) as 'Client_QA_RejectedFiles', sum(`clientqarejectimages`) as 'Client_QA_RejectedImages', sum(`digisignfiles`) as 'Digi_SignFiles', sum(`digisignimages`) as 'Digi_SignImages' FROM scanned s";
+
+  // Array to hold query parameters
   const queryParams = [];
+
+  // Check if startDate and endDate are provided
   if (startDate && endDate) {
-    query += ` WHERE (s.inventorydate BETWEEN ? AND ?)
-                OR (s.scandate BETWEEN ? AND ?)
-                OR (s.qcdate BETWEEN ? AND ?)
-                OR (s.flaggingdate BETWEEN ? AND ?)
-                OR (s.indexdate BETWEEN ? AND ?)
-                OR (s.cbslqadate BETWEEN ? AND ?)
-                OR (s.exportdate BETWEEN ? AND ?)
-                OR (s.clientqaacceptdate BETWEEN ? AND ?)
-                OR (s.digisigndate BETWEEN ? AND ?)`;
+    // Append date conditions to both queries
+    locationQuery += " WHERE ";
+    totalQuery += " WHERE ";
+
+    locationQuery += `(s.inventorydate BETWEEN ? AND ?)
+                      OR (s.scandate BETWEEN ? AND ?)
+                      OR (s.qcdate BETWEEN ? AND ?)
+                      OR (s.flaggingdate BETWEEN ? AND ?)
+                      OR (s.indexdate BETWEEN ? AND ?)
+                      OR (s.cbslqadate BETWEEN ? AND ?)
+                      OR (s.exportdate BETWEEN ? AND ?)
+                      OR (s.clientqaacceptdate BETWEEN ? AND ?)
+                      OR (s.digisigndate BETWEEN ? AND ?)`;
+
+    totalQuery += `(s.inventorydate BETWEEN ? AND ?)
+                      OR (s.scandate BETWEEN ? AND ?)
+                      OR (s.qcdate BETWEEN ? AND ?)
+                      OR (s.flaggingdate BETWEEN ? AND ?)
+                      OR (s.indexdate BETWEEN ? AND ?)
+                      OR (s.cbslqadate BETWEEN ? AND ?)
+                      OR (s.exportdate BETWEEN ? AND ?)
+                      OR (s.clientqaacceptdate BETWEEN ? AND ?)
+                      OR (s.digisigndate BETWEEN ? AND ?)`;
+
+    // Push startDate and endDate multiple times for each date filter
     for (let i = 0; i < 18; i++) {
       queryParams.push(startDate, endDate);
     }
   }
 
+  // Check if locationName is provided
+  if (locationName) {
+    // Append locationName condition to the locationQuery
+    locationQuery += " AND s.locationname = ?";
 
-  connection.query(query, queryParams, (err, results) => {
-    if (err) {
-      console.error("Error fetching summary data:", err);
-      res.status(500).json({ error: "Error fetching summary data" });
-      return;
-    }
-    res.json(results);
-  });
+    // Push locationName to queryParams
+    queryParams.push(locationName);
+  }
+
+  // Execute both queries asynchronously
+  try {
+    const [locationResults, totalResults] = await Promise.all([
+      executeQuery(locationQuery, queryParams),
+      executeQuery(totalQuery, queryParams),
+    ]);
+
+    // Combine location-wise data and total data
+    const summaryData = {
+      locationData: locationResults,
+      totalData: totalResults[0], // Assuming totalResults contains only one row
+    };
+
+    res.json(summaryData);
+  } catch (error) {
+    console.error("Error fetching summary data:", error);
+    res.status(500).json({ error: "Error fetching summary data" });
+  }
 });
+
+// Function to execute a MySQL query
+function executeQuery(query, queryParams) {
+  return new Promise((resolve, reject) => {
+    mysql22.query(query, queryParams, (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
+
+
+
+
 app.get("/summarycsv",  (req, res, next) => {
   let locationNames = req.query.locationName;
   let startDate = req.query.startDate;
@@ -1539,7 +1689,7 @@ app.post("/login", (req, res) => {
   const { user_email_id, password } = req.body;
   const selectQuery = "SELECT * FROM tbl_user_master WHERE user_email_id=?";
   
-  misdb.query(selectQuery, [user_email_id], (err, rows) => {
+  mysql22.query(selectQuery, [user_email_id], (err, rows) => {
     if (err) {
       console.error("Error checking user existence:", err);
       return res.status(500).json({ error: "An error occurred while checking user existence" });
@@ -1609,7 +1759,7 @@ app.post("/createuser", (req, res) => {
   // console.log("data",req.body);
 
   const selectQuery = "SELECT * FROM tbl_user_master WHERE user_email_id=?";
-  mysql22.query(selectQuery, [data.user_email_id], (err, rows) => {
+  misdb.query(selectQuery, [data.user_email_id], (err, rows) => {
     if (err) {
       console.error("Error checking user existence:", err);
       return res.status(500).json({ error: "An error occurred while checking user existence" });
@@ -1621,7 +1771,7 @@ app.post("/createuser", (req, res) => {
     }
 
     const query1 = "INSERT INTO tbl_user_master (user_email_id,first_name,middle_name,last_name,password,designation,phone_no,profile_picture,superior_name,superior_email,user_created_date,emp_id,last_pass_change,login_disabled_date,fpi_template, fpi_template_two,fpi_template_three,fpi_template_four,lang,locations,user_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    mysql22.query(query1, [data.user_email_id, data.first_name, data.middle_name, data.last_name, data.password, data.designation, data.phone_no, data.profile_picture, data.superior_name, data.superior_email, data.user_created_date, data.emp_id, data.last_pass_change, data.login_disabled_date, data.fpi_template, data.fpi_template_two, data.fpi_template_three, data.fpi_template_four, data.lang, data.locations, data.user_type], (err, results) => {
+    misdb.query(query1, [data.user_email_id, data.first_name, data.middle_name, data.last_name, data.password, data.designation, data.phone_no, data.profile_picture, data.superior_name, data.superior_email, data.user_created_date, data.emp_id, data.last_pass_change, data.login_disabled_date, data.fpi_template, data.fpi_template_two, data.fpi_template_three, data.fpi_template_four, data.lang, data.locations, data.user_type], (err, results) => {
       if (err) {
         console.error("Error inserting user:", err);
         res.status(500).json({ error: "An error occurred while inserting user" });
@@ -1690,15 +1840,67 @@ app.post("/createuser", (req, res) => {
       }
     });
   });
-
   app.put("/createuserupdate/:user_id", (req, res) => {
-    const data = req.body;
+    const  data = req.body;
     console.log(req.body)
     const { user_id } = req.params;
+  
+  
+    // const query1 = `
+    //   UPDATE tbl_user_master 
+    //   SET 
+    //     user_email_id = ?, 
+    //     first_name = ?, 
+    //     middle_name = ?, 
+    //     last_name = ?, 
+    //     password = ?, 
+    //     designation = ?, 
+    //     phone_no = ?, 
+    //     profile_picture = "", 
+    //     superior_name = "", 
+    //     superior_email = "", 
+    //     user_created_date = "", 
+    //     emp_id = ?, 
+    //     last_pass_change = "", 
+    //     login_disabled_date = ?, 
+    //     fpi_template = "", 
+    //     fpi_template_two = "", 
+    //     fpi_template_three = "", 
+    //     fpi_template_four = "", 
+    //     lang = "", 
+    //     locations = ?, 
+    //     user_type = ?
+    //   WHERE user_id = ?
+    // `;
+  
+  
+    // const params1 = [
+    //   data.user_email_id, 
+    //   data.first_name, 
+    //   data.middle_name, 
+    //   data.last_name, 
+    //   data.password, 
+    //   data.designation, 
+    //   data.phone_no, 
+    //   data.profile_picture , 
+    //   data.superior_name , 
+    //   data.superior_email , 
+    //   data.user_created_date, 
+    //   data.emp_id, 
+    //   data.last_pass_change , 
+    //   data.login_disabled_date, 
+    //   data.fpi_template , 
+    //   data.fpi_template_two , 
+    //   data.fpi_template_three , 
+    //   data.fpi_template_four , 
+    //   data.lang , 
+    //   data.locations, 
+    //   data.user_type, 
+    //   user_id
+    // ];
     const query1 = `
     UPDATE tbl_user_master 
     SET 
-      user_email_id = ?, 
       first_name = ?, 
       middle_name = ?, 
       last_name = ?, 
@@ -1707,10 +1909,8 @@ app.post("/createuser", (req, res) => {
       phone_no = ?, 
       profile_picture = ?, 
       superior_name = ?, 
-      superior_email = ?, 
-      user_created_date = ?, 
-      emp_id = ?, 
-      last_pass_change = ?, 
+      superior_email = ?,  
+      emp_id = ?,  
       login_disabled_date = ?, 
       fpi_template = ?, 
       fpi_template_two = ?, 
@@ -1721,79 +1921,300 @@ app.post("/createuser", (req, res) => {
       user_type = ?
     WHERE user_id = ?
   `;
-
-    const params1 = [
-      data.user_email_id,
-      data.first_name,
-      data.middle_name,
-      data.last_name,
-      data.password,
-      data.designation,
-      data.phone_no,
-      data.profile_picture,
-      data.superior_name,
-      data.superior_email,
-      data.user_created_date,
-      data.emp_id,
-      data.last_pass_change,
-      data.login_disabled_date,
-      data.fpi_template,
-      data.fpi_template_two,
-      data.fpi_template_three,
-      data.fpi_template_four,
-      data.lang,
-      data.locations,
-      data.user_type,
-      user_id
-    ];
-
-    mysql22.query(query1, params1, (err, results) => {
+  
+  
+  const params1 = [
+    data.first_name, 
+    data.middle_name, 
+    data.last_name, 
+    data.password, 
+    data.designation, 
+    data.phone_no, 
+    data.profile_picture || '', 
+    data.superior_name || '', 
+    data.superior_email || '', 
+    data.emp_id, 
+    data.login_disabled_date, 
+    data.fpi_template || '', 
+    data.fpi_template_two || '', 
+    data.fpi_template_three || '', 
+    data.fpi_template_four || '', 
+    data.lang || '', 
+    data.locations, 
+    data.user_type, 
+    user_id
+  ];
+  
+  
+  
+  
+    misdb.query(query1, params1, (err, results) => {
       if (err) {
         console.error("Error updating user:", err);
         return res.status(500).json({ error: "An error occurred while updating user" });
       }
-
+  
+  
       const query2 = `
-      UPDATE tbl_bridge_role_to_um 
-      SET
-        user_ids=?
-      WHERE
-        role_id=?
-    `;
+        UPDATE tbl_bridge_role_to_um 
+        SET
+          user_ids=?
+        WHERE
+          role_id=?
+      `;
       const params2 = [
         data.role_id,
         user_id,
         data.user_ids,
-
+        
       ];
-      mysql22.query(query2, params2, (err, results) => {
+      misdb.query(query2, params2, (err, results) => {
         if (err) {
           console.error("Error updating user role:", err);
           return res.status(500).json({ error: "An error occurred while updating user role" });
         }
+  
+  
         const query3 = `
-        UPDATE tbl_bridge_grp_to_um 
-        SET
-          user_ids=?
-        WHERE
-          group_id=?
-      `;
+          UPDATE tbl_bridge_grp_to_um 
+          SET
+            user_ids=?
+          WHERE
+            group_id=?
+        `;
         const params3 = [
           data.group_id,
           user_id,
           data.user_ids,
-
+          
         ];
-        mysql22.query(query3, params3, (err, results) => {
+        misdb.query(query3, params3, (err, results) => {
           if (err) {
             console.error("Error updating user group:", err);
             return res.status(500).json({ error: "An error occurred while updating user group" });
           }
+  
+  
           res.status(200).json({ message: "User updated successfully", id: user_id });
         });
       });
     });
+  });  
+  app.get("/user/:userId", (req, res) => {
+    const userId = req.params.userId;
+  
+  
+    // Query to fetch user information
+    const selectUserQuery = `
+      SELECT 
+        u.*, 
+        l.LocationName AS location_name 
+      FROM 
+        tbl_user_master AS u 
+      LEFT JOIN 
+        locationmaster AS l ON u.locations = l.LocationID 
+      WHERE 
+        u.user_id = ?`;
+    
+    misdb.query(selectUserQuery, [userId], (err, userRows) => {
+      if (err) {
+        console.error("Error retrieving user information:", err);
+        return res.status(500).json({ error: "An error occurred while retrieving user information" });
+      }
+      if (userRows.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+  
+      const user = userRows[0];
+  
+  
+      // Query to fetch roles and their IDs
+      const selectRoleQuery = `
+        SELECT 
+          r.role_id, 
+          r.user_role 
+        FROM 
+          tbl_bridge_role_to_um AS brtu 
+        JOIN 
+          tbl_user_roles AS r ON brtu.role_id = r.role_id 
+        WHERE 
+          brtu.user_ids LIKE ?`;
+      misdb.query(selectRoleQuery, [`%${userId}%`], (err, roleRows) => {
+        if (err) {
+          console.error("Error retrieving roles:", err);
+          return res.status(500).json({ error: "An error occurred while retrieving roles" });
+        }
+  
+  
+        // Extract role names and IDs
+        const roles = roleRows.map(row => ({ id: row.role_id, name: row.user_role }));
+  
+  
+        // Query to fetch groups and their IDs
+        const selectGroupQuery = `
+          SELECT 
+            g.group_id, 
+            g.group_name 
+          FROM 
+            tbl_bridge_grp_to_um AS btgu 
+          JOIN 
+            tbl_group_master AS g ON btgu.group_id = g.group_id 
+          WHERE 
+            btgu.user_ids LIKE ?`;
+        misdb.query(selectGroupQuery, [`%${userId}%`], (err, groupRows) => {
+          if (err) {
+            console.error("Error retrieving groups:", err);
+            return res.status(500).json({ error: "An error occurred while retrieving groups" });
+          }
+  
+  
+          // Extract group names and IDs
+          const groups = groupRows.map(row => ({ id: row.group_id, name: row.group_name }));
+  
+  
+          // Query to fetch storage levels and their IDs
+          const selectStorageLevelQuery = `
+            SELECT 
+              s.sl_id, 
+              s.sl_name 
+            FROM 
+              tbl_storagelevel_to_permission AS btsu 
+            JOIN 
+              tbl_storage_level AS s ON btsu.sl_id = s.sl_id 
+            WHERE 
+              btsu.user_id LIKE ?`;
+          misdb.query(selectStorageLevelQuery, [`%${userId}%`], (err, storageLevelRows) => {
+            if (err) {
+              console.error("Error retrieving storage levels:", err);
+              return res.status(500).json({ error: "An error occurred while retrieving storage levels" });
+            }
+  
+  
+            // Extract storage level names and IDs
+            const storageLevels = storageLevelRows.map(row => ({ id: row.sl_id, name: row.sl_name }));
+  
+  
+            // Construct response object
+            const responseData = {
+              ...user,
+              roles,
+              groups,
+              storageLevels
+            };
+  
+  
+            // Send response
+            res.status(200).json(responseData);
+          });
+        });
+      });
+    });
   });
+
+  // app.put("/createuserupdate/:user_id", (req, res) => {
+  //   const data = req.body;
+  //   console.log(req.body)
+  //   const { user_id } = req.params;
+  //   const query1 = `
+  //   UPDATE tbl_user_master 
+  //   SET 
+  //     user_email_id = ?, 
+  //     first_name = ?, 
+  //     middle_name = ?, 
+  //     last_name = ?, 
+  //     password = ?, 
+  //     designation = ?, 
+  //     phone_no = ?, 
+  //     profile_picture = ?, 
+  //     superior_name = ?, 
+  //     superior_email = ?, 
+  //     user_created_date = ?, 
+  //     emp_id = ?, 
+  //     last_pass_change = ?, 
+  //     login_disabled_date = ?, 
+  //     fpi_template = ?, 
+  //     fpi_template_two = ?, 
+  //     fpi_template_three = ?, 
+  //     fpi_template_four = ?, 
+  //     lang = ?, 
+  //     locations = ?, 
+  //     user_type = ?
+  //   WHERE user_id = ?
+  // `;
+
+  //   const params1 = [
+  //     data.user_email_id,
+  //     data.first_name,
+  //     data.middle_name,
+  //     data.last_name,
+  //     data.password,
+  //     data.designation,
+  //     data.phone_no,
+  //     data.profile_picture,
+  //     data.superior_name,
+  //     data.superior_email,
+  //     data.user_created_date,
+  //     data.emp_id,
+  //     data.last_pass_change,
+  //     data.login_disabled_date,
+  //     data.fpi_template,
+  //     data.fpi_template_two,
+  //     data.fpi_template_three,
+  //     data.fpi_template_four,
+  //     data.lang,
+  //     data.locations,
+  //     data.user_type,
+  //     user_id
+  //   ];
+
+  //   misdb.query(query1, params1, (err, results) => {
+  //     if (err) {
+  //       console.error("Error updating user:", err);
+  //       return res.status(500).json({ error: "An error occurred while updating user" });
+  //     }
+
+  //     const query2 = `
+  //     UPDATE tbl_bridge_role_to_um 
+  //     SET
+  //       user_ids=?
+  //     WHERE
+  //       role_id=?
+  //   `;
+  //     const params2 = [
+  //       data.role_id,
+  //       user_id,
+  //       data.user_ids,
+
+  //     ];
+  //     misdb.query(query2, params2, (err, results) => {
+  //       if (err) {
+  //         console.error("Error updating user role:", err);
+  //         return res.status(500).json({ error: "An error occurred while updating user role" });
+  //       }
+  //       const query3 = `
+  //       UPDATE tbl_bridge_grp_to_um 
+  //       SET
+  //         user_ids=?
+  //       WHERE
+  //         group_id=?
+  //     `;
+  //       const params3 = [
+  //         data.group_id,
+  //         user_id,
+  //         data.user_ids,
+
+  //       ];
+  //       misdb.query(query3, params3, (err, results) => {
+  //         if (err) {
+  //           console.error("Error updating user group:", err);
+  //           return res.status(500).json({ error: "An error occurred while updating user group" });
+  //         }
+  //         res.status(200).json({ message: "User updated successfully", id: user_id });
+  //       });
+  //     });
+  //   });
+  // });
 
   // app.delete("/createuserdelete/:user_id", (req, res) => {
   //   const { user_id } = req.params;
