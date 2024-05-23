@@ -43,9 +43,9 @@ const mysql22 = mysql.createConnection({
 });
 const misdb = mysql.createConnection({
   host: "localhost",
-  port: "3306",
+  port: "3307",
   user: "root",
-  password: "root",
+  password: "Cbdbblr@452",
   database: "updc_misdb",
 });
 // const teldb = mysql.createConnection({
@@ -1689,7 +1689,7 @@ app.post("/login", (req, res) => {
   const { user_email_id, password } = req.body;
   const selectQuery = "SELECT * FROM tbl_user_master WHERE user_email_id=?";
   
-  mysql22.query(selectQuery, [user_email_id], (err, rows) => {
+  misdb.query(selectQuery, [user_email_id], (err, rows) => {
     if (err) {
       console.error("Error checking user existence:", err);
       return res.status(500).json({ error: "An error occurred while checking user existence" });
@@ -1706,7 +1706,7 @@ app.post("/login", (req, res) => {
       }
       if (result) {
         const updateQuery = "UPDATE tbl_user_master SET last_active_login = NOW() WHERE user_email_id = ?";
-        mysql22.query(updateQuery, [user_email_id], (err) => {
+        misdb.query(updateQuery, [user_email_id], (err) => {
           if (err) {
             console.error("Error updating last_active_login:", err);
             return res.status(500).json({ error: "An error occurred while updating last_active_login" });
@@ -1718,7 +1718,7 @@ app.post("/login", (req, res) => {
           LEFT JOIN tbl_user_roles r ON br.role_id = r.role_id
           WHERE u.user_email_id = ?
         `;
-          mysql22.query(selectRolesQuery, [user_email_id], (err,roleRows) => {
+          misdb.query(selectRolesQuery, [user_email_id], (err,roleRows) => {
             if (err) {
               console.error("Error fetching user role:", err);
               return res.status(500).json({ error: "An error occurred while fetching user role" });
