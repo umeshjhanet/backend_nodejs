@@ -6,6 +6,8 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const xlsx = require('xlsx');
+const crypto = require('crypto');
+const bodyParser = require('body-parser');
 const unzipper = require('unzipper');
 const fs = require('fs');
 const fsPromises = fs.promises;
@@ -26,6 +28,8 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
 function formatDate(date) {
   const day = date.getDate().toString().padStart(2, '0');
@@ -35,7 +39,7 @@ function formatDate(date) {
 }
 
 const pool = mysql.createPool({
-  host: 'localhost',
+  host: '192.168.3.48',
   user: 'umesh',
   password: 'admin@123',
   database: 'ezeefile_updc',
@@ -43,6 +47,18 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0
 });
+
+
+// const pool = mysql.createPool({
+//   host: 'localhost',
+//   user: 'root',
+//   password: 'root',
+//   database: 'updc_live',
+//   waitForConnections: true,
+//   connectionLimit: 10,
+//   queueLimit: 0,
+//   port:'3306'
+// });
 
 const promisePool = pool.promise();
 
@@ -217,6 +233,7 @@ app.get("/summary", async (req, res) => {
   let locationName = req.query.locationName;
   let startDate = req.query.startDate;
   let endDate = req.query.endDate;
+  let fileType=req.query.fileType
 
 
   if (!locationName || (Array.isArray(locationName) && locationName.length === 0)) {
@@ -234,6 +251,15 @@ app.get("/summary", async (req, res) => {
   if (locationName) {
     whereClause = `WHERE locationname IN ('${locationName.join("','")}')`;
   }
+
+  if (fileType) {
+    if (whereClause) {
+      whereClause += ` AND filetype = '${fileType}'`;
+    } else {
+      whereClause = `WHERE filetype = '${fileType}'`;
+    }
+  }
+
 
 
   let dateFilter = "";
@@ -282,6 +308,7 @@ app.get("/reportTable", async (req, res) => {
   let locationName = req.query.locationName;
   let startDate = req.query.startDate;
   let endDate = req.query.endDate;
+  let fileType=req.query.fileType
 
 
   if (!locationName || (Array.isArray(locationName) && locationName.length === 0)) {
@@ -300,6 +327,13 @@ app.get("/reportTable", async (req, res) => {
     whereClause = `WHERE locationname IN ('${locationName.join("','")}')`;
   }
 
+  if (fileType) {
+    if (whereClause) {
+      whereClause += ` AND filetype = '${fileType}'`;
+    } else {
+      whereClause = `WHERE filetype = '${fileType}'`;
+    }
+  }
 
   let dateFilter = "";
   if (startDate && endDate) {
@@ -343,10 +377,12 @@ app.get("/reportTable", async (req, res) => {
     res.status(500).json({ error: "Error fetching summary data" });
   }
 });
+
 app.get("/summarycsv", async (req, res, next) => {
   let locationNames = req.query.locationName;
   let startDate = req.query.startDate;
   let endDate = req.query.endDate;
+  let fileType=req.query.fileType;
 
 
   if (!locationNames || (Array.isArray(locationNames) && locationNames.length === 0)) {
@@ -362,6 +398,14 @@ app.get("/summarycsv", async (req, res, next) => {
   if (locationNames) {
     whereClause = `WHERE locationname IN ('${locationNames.join("','")}')`;
   }
+ 
+  if (fileType) {
+    if (whereClause) {
+      whereClause += ` AND filetype = '${fileType}'`;
+    } else {
+      whereClause = `WHERE filetype = '${fileType}'`;
+    }
+  }
 
 
   let dateFilter = "";
@@ -371,31 +415,31 @@ app.get("/summarycsv", async (req, res, next) => {
 
 
   const getCsv = `
-    SELECT Count(distinct locationid) as TotalLocation, 
-      SUM(CASE WHEN 1=1 ${dateFilter} THEN inventoryfiles ELSE 0 END) AS 'CollectionFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter} THEN inventoryimages ELSE 0 END) AS 'CollectionImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "scandate")} THEN scanfiles ELSE 0 END) AS 'ScannedFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "scandate")} THEN scanimages ELSE 0 END) AS 'ScannedImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "qcdate")} THEN qcfiles ELSE 0 END) AS 'QCFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "qcdate")} THEN qcimages ELSE 0 END) AS 'QCImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "flaggingdate")} THEN flaggingfiles ELSE 0 END) AS 'FlaggingFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "flaggingdate")} THEN flaggingimages ELSE 0 END) AS 'FlaggingImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "indexdate")} THEN indexfiles ELSE 0 END) AS 'IndexingFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "indexdate")} THEN indeximages ELSE 0 END) AS 'IndexingImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "cbslqadate")} THEN cbslqafiles ELSE 0 END) AS 'CBSL_QAFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "cbslqadate")} THEN cbslqaimages ELSE 0 END) AS 'CBSL_QAImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "exportdate")} THEN exportpdffiles ELSE 0 END) AS 'Export_PdfFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "exportdate")} THEN exportpdfimages ELSE 0 END) AS 'Export_PdfImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqaacceptdate")} THEN clientqaacceptfiles ELSE 0 END) AS 'Client_QA_AcceptedFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqaacceptdate")} THEN clientqaacceptimages ELSE 0 END) AS 'Client_QA_AcceptedImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqarejectdate")} THEN clientqarejectfiles ELSE 0 END) AS 'Client_QA_RejectedFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqarejectdate")} THEN clientqarejectimages ELSE 0 END) AS 'Client_QA_RejectedImages',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "digisigndate")} THEN digisignfiles ELSE 0 END) AS 'Digi_SignFiles',
-      SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "digisigndate")} THEN digisignimages ELSE 0 END) AS 'Digi_SignImages'
-    FROM scanned
-    ${whereClause}
-  ;`;
-
+  SELECT 
+    COALESCE(Count(distinct locationid), 0) as TotalLocation, 
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter} THEN inventoryfiles ELSE 0 END), 0) AS 'CollectionFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter} THEN inventoryimages ELSE 0 END), 0) AS 'CollectionImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "scandate")} THEN scanfiles ELSE 0 END), 0) AS 'ScannedFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "scandate")} THEN scanimages ELSE 0 END), 0) AS 'ScannedImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "qcdate")} THEN qcfiles ELSE 0 END), 0) AS 'QCFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "qcdate")} THEN qcimages ELSE 0 END), 0) AS 'QCImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "flaggingdate")} THEN flaggingfiles ELSE 0 END), 0) AS 'FlaggingFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "flaggingdate")} THEN flaggingimages ELSE 0 END), 0) AS 'FlaggingImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "indexdate")} THEN indexfiles ELSE 0 END), 0) AS 'IndexingFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "indexdate")} THEN indeximages ELSE 0 END), 0) AS 'IndexingImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "cbslqadate")} THEN cbslqafiles ELSE 0 END), 0) AS 'CBSL_QAFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "cbslqadate")} THEN cbslqaimages ELSE 0 END), 0) AS 'CBSL_QAImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "exportdate")} THEN exportpdffiles ELSE 0 END), 0) AS 'Export_PdfFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "exportdate")} THEN exportpdfimages ELSE 0 END), 0) AS 'Export_PdfImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqaacceptdate")} THEN clientqaacceptfiles ELSE 0 END), 0) AS 'Client_QA_AcceptedFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqaacceptdate")} THEN clientqaacceptimages ELSE 0 END), 0) AS 'Client_QA_AcceptedImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqarejectdate")} THEN clientqarejectfiles ELSE 0 END), 0) AS 'Client_QA_RejectedFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqarejectdate")} THEN clientqarejectimages ELSE 0 END), 0) AS 'Client_QA_RejectedImages',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "digisigndate")} THEN digisignfiles ELSE 0 END), 0) AS 'Digi_SignFiles',
+    COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "digisigndate")} THEN digisignimages ELSE 0 END), 0) AS 'Digi_SignImages'
+  FROM scanned
+  ${whereClause}
+;`;
 
   try {
     const [result] = await promisePool.query(getCsv);
@@ -415,7 +459,7 @@ app.get("/summarycsv", async (req, res, next) => {
 
     // Write CSV headers
     res.write('Sr. No.,Location,Collection of Records, ,Scanning ADF, ,ImageQC, ,Document Classification, ,Indexing, ,CBSLQA, ,Export PDF, ,Client QA, ,CSV Generation, ,Inventory Out\n');
-    res.write(" ,  ,Files, Images,Files,Images,Files,Images,Files,Images,Files, Images,Files,Images,Files,Images,Files,Images,Files,Images,Files,Images,Files,Images\n");
+    res.write(" ,  ,Files, Images,Files,Images,Files,Images,Files,Images,Files, Images,Files,Images,Files,Images,Files,Images,Files,Images,Files,Images\n");
 
 
     // Write CSV data
@@ -455,12 +499,12 @@ app.get("/summarycsv", async (req, res, next) => {
   }
 });
 
-
-
 app.get("/reporttablecsv",async(req, res, next) => {
   let locationNames = req.query.locationName;
   let startDate = req.query.startDate;
   let endDate = req.query.endDate;
+  let fileType=req.query.fileType;
+
   if (!locationNames || (Array.isArray(locationNames) && locationNames.length === 0)) {
     locationNames = null;
   } else {
@@ -472,39 +516,49 @@ app.get("/reporttablecsv",async(req, res, next) => {
   if (locationNames) {
     whereClause = `WHERE locationname IN ('${locationNames.join("','")}')`;
   }
+
+  if (fileType) {
+    if (whereClause) {
+      whereClause += ` AND filetype = '${fileType}'`;
+    } else {
+      whereClause = `WHERE filetype = '${fileType}'`;
+    }
+  }
+
+
   let dateFilter = "";
       if (startDate && endDate) {
         dateFilter = `AND inventorydate BETWEEN '${startDate}' AND '${endDate}'`;
       }
     
       const getCsv = `
-        SELECT locationid, locationname as 'LocationName', 
-         SUM(CASE WHEN 1=1 ${dateFilter} THEN inventoryfiles ELSE 0 END) AS 'CollectionFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter} THEN inventoryimages ELSE 0 END) AS 'CollectionImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "scandate")} THEN scanfiles ELSE 0 END) AS 'ScannedFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "scandate")} THEN scanimages ELSE 0 END) AS 'ScannedImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "qcdate")} THEN qcfiles ELSE 0 END) AS 'QCFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "qcdate")} THEN qcimages ELSE 0 END) AS 'QCImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "flaggingdate")} THEN flaggingfiles ELSE 0 END) AS 'FlaggingFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "flaggingdate")} THEN flaggingimages ELSE 0 END) AS 'FlaggingImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "indexdate")} THEN indexfiles ELSE 0 END) AS 'IndexingFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "indexdate")} THEN indeximages ELSE 0 END) AS 'IndexingImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "cbslqadate")} THEN cbslqafiles ELSE 0 END) AS 'CBSL_QAFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "cbslqadate")} THEN cbslqaimages ELSE 0 END) AS 'CBSL_QAImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "exportdate")} THEN exportpdffiles ELSE 0 END) AS 'Export_PdfFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "exportdate")} THEN exportpdfimages ELSE 0 END) AS 'Export_PdfImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqaacceptdate")} THEN clientqaacceptfiles ELSE 0 END) AS 'Client_QA_AcceptedFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqaacceptdate")} THEN clientqaacceptimages ELSE 0 END) AS 'Client_QA_AcceptedImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqarejectdate")} THEN clientqarejectfiles ELSE 0 END) AS 'Client_QA_RejectedFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqarejectdate")} THEN clientqarejectimages ELSE 0 END) AS 'Client_QA_RejectedImages',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "digisigndate")} THEN digisignfiles ELSE 0 END) AS 'Digi_SignFiles',
-          SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "digisigndate")} THEN digisignimages ELSE 0 END) AS 'Digi_SignImages'
-          FROM scanned
-          ${whereClause}
-          GROUP BY 
-    locationname,locationid
-      ;`;
-
+      SELECT 
+        locationid, 
+        locationname as 'LocationName', 
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter} THEN inventoryfiles ELSE 0 END), 0) AS 'CollectionFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter} THEN inventoryimages ELSE 0 END), 0) AS 'CollectionImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "scandate")} THEN scanfiles ELSE 0 END), 0) AS 'ScannedFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "scandate")} THEN scanimages ELSE 0 END), 0) AS 'ScannedImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "qcdate")} THEN qcfiles ELSE 0 END), 0) AS 'QCFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "qcdate")} THEN qcimages ELSE 0 END), 0) AS 'QCImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "flaggingdate")} THEN flaggingfiles ELSE 0 END), 0) AS 'FlaggingFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "flaggingdate")} THEN flaggingimages ELSE 0 END), 0) AS 'FlaggingImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "indexdate")} THEN indexfiles ELSE 0 END), 0) AS 'IndexingFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "indexdate")} THEN indeximages ELSE 0 END), 0) AS 'IndexingImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "cbslqadate")} THEN cbslqafiles ELSE 0 END), 0) AS 'CBSL_QAFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "cbslqadate")} THEN cbslqaimages ELSE 0 END), 0) AS 'CBSL_QAImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "exportdate")} THEN exportpdffiles ELSE 0 END), 0) AS 'Export_PdfFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "exportdate")} THEN exportpdfimages ELSE 0 END), 0) AS 'Export_PdfImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqaacceptdate")} THEN clientqaacceptfiles ELSE 0 END), 0) AS 'Client_QA_AcceptedFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqaacceptdate")} THEN clientqaacceptimages ELSE 0 END), 0) AS 'Client_QA_AcceptedImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqarejectdate")} THEN clientqarejectfiles ELSE 0 END), 0) AS 'Client_QA_RejectedFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "clientqarejectdate")} THEN clientqarejectimages ELSE 0 END), 0) AS 'Client_QA_RejectedImages',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "digisigndate")} THEN digisignfiles ELSE 0 END), 0) AS 'Digi_SignFiles',
+        COALESCE(SUM(CASE WHEN 1=1 ${dateFilter.replace(/inventorydate/g, "digisigndate")} THEN digisignimages ELSE 0 END), 0) AS 'Digi_SignImages'
+      FROM scanned
+      ${whereClause}
+      GROUP BY locationname, locationid
+    ;`;
 
 
       try {
@@ -1503,15 +1557,22 @@ app.post("/site_MP", (req, res) => {
   );
 });
 
+function hashPasswordSHA1(password) {
+  return crypto.createHash('sha1').update(password).digest('hex');
+}
+
 app.post("/createuser", async (req, res) => {
   try {
     const data = req.body;
 
-    // Generate salt for password hashing
-    const salt = await bcrypt.genSalt(10);
+    // // Generate salt for password hashing
+    // const salt = await bcrypt.genSalt(10);
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(data.password, salt);
+    // // Hash the password
+    // const hashedPassword = await bcrypt.hash(data.password, salt);
+
+    const hashedPassword = hashPasswordSHA1(data.password);
+  data.password = hashedPassword;
 
     // Check if user with the same email already exists
     const [existingUserRows] = await promisePool.query("SELECT * FROM tbl_user_master WHERE user_email_id=?", [data.user_email_id]);
