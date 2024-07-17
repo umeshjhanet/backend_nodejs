@@ -6,8 +6,6 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const xlsx = require('xlsx');
-const crypto = require('crypto');
-const bodyParser = require('body-parser');
 const unzipper = require('unzipper');
 const fs = require('fs');
 const fsPromises = fs.promises;
@@ -28,8 +26,7 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+
 
 function formatDate(date) {
   const day = date.getDate().toString().padStart(2, '0');
@@ -1557,22 +1554,18 @@ app.post("/site_MP", (req, res) => {
   );
 });
 
-function hashPasswordSHA1(password) {
-  return crypto.createHash('sha1').update(password).digest('hex');
-}
+
 
 app.post("/createuser", async (req, res) => {
   try {
     const data = req.body;
 
-    // // Generate salt for password hashing
-    // const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(10);
 
-    // // Hash the password
-    // const hashedPassword = await bcrypt.hash(data.password, salt);
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(data.password, salt);
 
-    const hashedPassword = hashPasswordSHA1(data.password);
-  data.password = hashedPassword;
+   
 
     // Check if user with the same email already exists
     const [existingUserRows] = await promisePool.query("SELECT * FROM tbl_user_master WHERE user_email_id=?", [data.user_email_id]);
